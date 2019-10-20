@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
 	/* Compute circulant eigenvalues */
 
-	double *corr = fftw_alloc_real(2*n + 2);
+	double *eigen = fftw_alloc_real(n + 1);
 	double prevexp, currexp, nextexp;
 	currexp = pow(1.0 / n, 2 * hurst);
 	nextexp = 0.0;
@@ -60,14 +60,13 @@ int main(int argc, char **argv) {
 		prevexp = currexp;
 		currexp = nextexp;
 		nextexp = pow((double)(i+1) / (double)n, 2 * hurst);
-		corr[i] = corr[2*n-i] = prevexp + nextexp - 2.0*currexp;
+		eigen[i] = prevexp + nextexp - 2.0*currexp;
 	}
-	corr[n] = 0.0;
+	eigen[n] = 0.0;
 
-	fftw_complex *eigen = (fftw_complex *)corr;
-	fftw_plan eigenplan = fftw_plan_dft_r2c_1d(2*n, corr, eigen, FFTW_ESTIMATE);
+	fftw_plan eigenplan = fftw_plan_r2r_1d(n + 1, eigen, eigen,
+	                                       FFTW_REDFT00, FFTW_ESTIMATE);
 	fftw_execute(eigenplan);
-	/* corr[] invalid from this point on */
 	fftw_destroy_plan(eigenplan);
 
 	fftw_free(eigen);
