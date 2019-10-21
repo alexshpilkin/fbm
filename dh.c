@@ -10,19 +10,25 @@
 gsl_rng *rng;
 
 int main(int argc, char **argv) {
-	double hurst = 0.5;
-	unsigned g = 8;
+	double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
+	unsigned logn = 8;
 	int seed = -1;
 	int iters = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "h:g:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "h:g:m:n:I:S:")) != -1) {
 		switch (c) {
 		case 'h':
 			hurst = atof(optarg);
 			break;
 		case 'g':
-			g = atoi(optarg);
+			logn = atoi(optarg);
+			break;
+		case 'm':
+			lindrift = -atof(optarg); /* NB sign */
+			break;
+		case 'n':
+			fracdrift = -atof(optarg); /* NB sign */
 			break;
 		case 'I':
 			iters = atoi(optarg);
@@ -38,8 +44,8 @@ int main(int argc, char **argv) {
 	assert(hurst > 0.0 && hurst < 1.0);
 
 	unsigned n;
-	assert(g < sizeof(n) * CHAR_BIT);
-	n = 1u << g;
+	assert(logn < sizeof(n) * CHAR_BIT);
+	n = 1u << logn;
 
 	printf("# First passage times of fractional Brownian Motion with drift "
 	       "using Davies-Harte method\n"
@@ -48,7 +54,7 @@ int main(int argc, char **argv) {
 	       "# Linear drift: %g\n"
 	       "# Fractional drift: %g\n"
 	       "# Iterations: %i\n",
-	       hurst, n, 0.0 /* FIXME */, 0.0 /* FIXME */, iters);
+	       hurst, n, lindrift, fracdrift, iters);
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
@@ -78,7 +84,7 @@ int main(int argc, char **argv) {
 	/* Generate trace */
 
 	fftw_complex *temp = fftw_alloc_complex(n + 1);
-	double *noise = (double *)temp;
+	double *noise = (double *)temp, *trace = noise;
 	fftw_plan noiseplan = fftw_plan_dft_c2r_1d(2 * n, temp, noise,
 	                                           FFTW_ESTIMATE);
 
@@ -93,6 +99,15 @@ int main(int argc, char **argv) {
 		temp[n][0] = sqrt(0.5 * eigen[n] / n) * gsl_ran_gaussian_ziggurat(rng, 1.0);
 		temp[0][1] = temp[n][1] = 0.0;
 		fftw_execute(noiseplan);
+
+		/* FIXME Kahan summation ? */
+		double sum = 0.0, dt = 1.0 / n;
+		for (unsigned i = 0; i < n; i++) {
+			double a = noise[i] + dt * (lindrift + fracdrift * pow((i + 0.5)*dt, 2.0*hurst - 1.0));
+			trace[i] = sum;
+			sum += a;
+		}
+		trace[n] = sum;
 	}
 
 	fftw_free(temp);
