@@ -11,6 +11,13 @@
 
 gsl_rng *rng;
 
+double inner(double *vec1, double *vec2, size_t size) {
+	double sum = 0.0;
+	for (size_t i = 0; i < size; i++)
+		sum += vec1[i] * vec2[i];
+	return sum;
+}
+
 void symrk1(double *restrict out, double coe, double const *vec, size_t size) {
 	size_t k = 0;
 	for (size_t i = 0; i < size; i++) {
