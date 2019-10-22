@@ -1,7 +1,7 @@
 .PHONY: clean
 
-TARGET = dh
-OBJECTS = dh.o
+TARGET = fbm
+OBJECTS = fbm.o
 CFLAGS += -g -O2
 LDLIBS += -lfftw3 -lgsl -lgslcblas -lblas -lm
 

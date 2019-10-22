@@ -96,9 +96,9 @@ int main(int argc, char **argv) {
 
 		for (unsigned i = 0 /* FIXME 1 */; i < n; i++) {
 			temp[i][0] = sqrt(0.25 * eigen[i] / n) *
-				     gsl_ran_gaussian_ziggurat(rng, 1.0);
+			             gsl_ran_gaussian_ziggurat(rng, 1.0);
 			temp[i][1] = sqrt(0.25 * eigen[i] / n) *
-				     gsl_ran_gaussian_ziggurat(rng, 1.0);
+			             gsl_ran_gaussian_ziggurat(rng, 1.0);
 		}
 		temp[0][0] = sqrt(0.5 * eigen[0] / n) * gsl_ran_gaussian_ziggurat(rng, 1.0);
 		temp[n][0] = sqrt(0.5 * eigen[n] / n) * gsl_ran_gaussian_ziggurat(rng, 1.0);
