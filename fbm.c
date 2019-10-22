@@ -47,26 +47,12 @@ int main(int argc, char **argv) {
 	int c;
 	while ((c = getopt(argc, argv, "h:g:m:n:I:S:")) != -1) {
 		switch (c) {
-		case 'h':
-			hurst = atof(optarg);
-			break;
-		case 'g':
-			logn = atoi(optarg);
-			break;
-		case 'm':
-			lindrift = -atof(optarg); /* NB sign */
-			break;
-		case 'n':
-			fracdrift = -atof(optarg); /* NB sign */
-			break;
-		case 'I':
-			iters = atoi(optarg);
-			break;
-		case 'S':
-			seed = atoi(optarg);
-			break;
-		default:
-			__builtin_unreachable();
+		case 'h': hurst = atof(optarg); break;
+		case 'g': logn = atoi(optarg); break;
+		case 'm': lindrift = -atof(optarg); break; /* NB sign */
+		case 'n': fracdrift = -atof(optarg); break; /* NB sign */
+		case 'I': iters = atoi(optarg); break;
+		case 'S': seed = atoi(optarg); break;
 		}
 	}
 
