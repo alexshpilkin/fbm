@@ -7,6 +7,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+#define BARRIER 0.1
+
 gsl_rng *rng;
 
 int main(int argc, char **argv) {
@@ -46,6 +48,7 @@ int main(int argc, char **argv) {
 	unsigned n;
 	assert(logn < sizeof(n) * CHAR_BIT);
 	n = 1u << logn;
+	double dt = 1.0 / n;
 
 	printf("# First passage times of fractional Brownian Motion with drift "
 	       "using Davies-Harte method\n"
@@ -81,7 +84,7 @@ int main(int argc, char **argv) {
 	fftw_execute(eigenplan);
 	fftw_destroy_plan(eigenplan);
 
-	/* Generate trace */
+	/* Iterate */
 
 	fftw_complex *temp = fftw_alloc_complex(n + 1);
 	double *noise = (double *)temp, *trace = noise;
@@ -89,6 +92,8 @@ int main(int argc, char **argv) {
 	                                           FFTW_ESTIMATE);
 
 	for (int iter = 0; iter < iters; iter++) {
+		/* Generate noise */
+
 		for (unsigned i = 0 /* FIXME 1 */; i < n; i++) {
 			temp[i][0] = sqrt(0.25 * eigen[i] / n) *
 				     gsl_ran_gaussian_ziggurat(rng, 1.0);
@@ -100,14 +105,25 @@ int main(int argc, char **argv) {
 		temp[0][1] = temp[n][1] = 0.0;
 		fftw_execute(noiseplan);
 
+		/* Integrate */
+
 		/* FIXME Kahan summation ? */
-		double sum = 0.0, dt = 1.0 / n;
+		double sum = 0.0;
 		for (unsigned i = 0; i < n; i++) {
 			double a = noise[i] + dt * (lindrift + fracdrift * pow((i + 0.5)*dt, 2.0*hurst - 1.0));
 			trace[i] = sum;
 			sum += a;
 		}
 		trace[n] = sum;
+
+		/* Find first passage */
+
+		unsigned i;
+		for (i = 1; i <= n; i++) {
+			if (trace[i] > BARRIER)
+				break;
+		}
+		printf("%g\n", i > n ? 1.0 : dt * (i - 1 + (BARRIER - trace[i-1]) / (trace[i] - trace[i-1])));
 	}
 
 	fftw_free(temp);
