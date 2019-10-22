@@ -41,8 +41,8 @@ void printmat(double *mat, size_t size) { /* FIXME debugging only */
 int main(int argc, char **argv) {
 	double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
 	unsigned logn = 8;
-	int seed = -1;
-	int iters = 0;
+	unsigned long seed = -1;
+	unsigned iters = 0;
 
 	int c;
 	while ((c = getopt(argc, argv, "h:g:m:n:I:S:")) != -1) {
@@ -70,11 +70,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	assert(hurst > 0.0 && hurst < 1.0);
-
-	unsigned n;
-	assert(logn < sizeof(n) * CHAR_BIT);
-	n = 1u << logn;
+	unsigned n = 1u << logn;
 	double dt = 1.0 / n;
 
 	printf("# First passage times of fractional Brownian Motion with drift "
