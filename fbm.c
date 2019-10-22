@@ -11,7 +11,17 @@
 
 gsl_rng *rng;
 
-void matvec(double *out, double *mat, double *vec, size_t size) {
+void symrk1(double *restrict out, double coe, double const *vec, size_t size) {
+	size_t k = 0;
+	for (size_t i = 0; i < size; i++) {
+		double tmp = coe * vec[i];
+		for (size_t j = 0; j <= i; j++)
+			out[k++] += tmp * vec[j];
+	}
+}
+
+void matvec(double *restrict out, double const *mat, double const *vec,
+            size_t size) {
 	for (size_t i = 0; i < size; i++) {
 		double sum = 0.0; size_t j, k;
 		for (j = 0, k = i*(i+1)/2; j < i; j++, k++)
