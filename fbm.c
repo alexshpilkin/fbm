@@ -11,6 +11,33 @@
 
 gsl_rng *rng;
 
+void matvec(double *out, double *mat, double *vec, size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		double sum = 0.0; size_t j, k;
+		for (j = 0, k = i*(i+1)/2; j < i; j++, k++)
+			sum += mat[k] * vec[j];
+		for (/* j = i, k = (i+1)*(i+2)/2 */; j < size; j++, k += j)
+			sum += mat[k] * vec[j];
+		out[i] = sum;
+	}
+}
+
+void printvec(double *vec, size_t size) { /* FIXME debugging only */
+	printf("[ ");
+	for (size_t row = 0; row < size; row++)
+		printf("%g ", *vec++);
+	printf("]^T\n");
+}
+
+void printmat(double *mat, size_t size) { /* FIXME debugging only */
+	for (size_t row = 0; row < size; row++) {
+		printf("[ ");
+		for (size_t col = 0; col <= row; col++)
+			printf("%g ", *mat++);
+		printf("]\n");
+	}
+}
+
 int main(int argc, char **argv) {
 	double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
 	unsigned logn = 8;
