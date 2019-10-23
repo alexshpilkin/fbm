@@ -139,19 +139,19 @@ int main(int argc, char **argv) {
 		double sum = 0.0;
 		for (unsigned i = 0; i < n; i++) {
 			double a = noise[i] + dt * (lindrift + fracdrift * pow((i + 0.5)*dt, 2.0*hurst - 1.0));
-			trace[i] = sum;
-			sum += a;
+			trace[i] = sum += a;
 		}
-		trace[n] = sum;
 
 		/* Find first passage */
 
 		unsigned i;
-		for (i = 1; i <= n; i++) {
+		double tprev = 0.0;
+		for (i = 0; i < n; i++) {
 			if (trace[i] > BARRIER)
 				break;
+			tprev = trace[i];
 		}
-		printf("%g\n", i > n ? 1.0 : dt * (i - 1 + (BARRIER - trace[i-1]) / (trace[i] - trace[i-1])));
+		printf("%g\n", i >= n ? 1.0 : dt * (i + (BARRIER - tprev) / (trace[i] - tprev)));
 	}
 
 	fftw_free(noise);
