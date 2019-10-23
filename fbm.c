@@ -5,10 +5,21 @@
 #include <gsl/gsl_rng.h>
 #include <limits.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define BARRIER 0.1
+
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+
+static double erfcinv(double x) {
+	/* Blair, Edwards, Johnson. "Rational Chebyshev approximations for the
+	 * inverse of the error function". Math.Comp. 30 (1976), 827--830.
+	 */
+	double eta = -log(sqrt(M_PI) * x), logeta = log(eta);
+	return sqrt(eta - 0.5*logeta + (0.25*logeta - 0.5)/eta);
+}
 
 static double inner(double const *vec1, double const *vec2, size_t size) {
 	double sum = 0.0;
@@ -60,11 +71,13 @@ static void printmat(double *mat, size_t size) { /* FIXME debugging only */
 	}
 }
 
+static double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9;
 static gsl_rng *rng;
-static double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
+static size_t size, alloc;
+static double *cinv, *times, *values;
 
-static void addpoint(double *restrict cinv, double *restrict times, double time,
-                     size_t size) {
+static void extend(double *restrict cinv, double *restrict times, double time,
+                   size_t size) {
 	/* FIXME Inner-loop allocation */
 	double *gamma = malloc(size * sizeof(*gamma)),
 	       *g = malloc(size * sizeof(*g));
@@ -80,6 +93,7 @@ static void addpoint(double *restrict cinv, double *restrict times, double time,
 	matvec(g, cinv, gamma, size);
 
 	double sigsq = 2.0 * pow(time, 2*hurst) - inner(gamma, g, size);
+	assert(sigsq >= 0.0);
 	symrk1(cinv, 1.0/sigsq, g, size);
 	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
@@ -87,18 +101,50 @@ static void addpoint(double *restrict cinv, double *restrict times, double time,
 	free(gamma); free(g);
 }
 
+bool visitfpt(double *fpt, double ltime, double lval, double rtime, double rval,
+              unsigned level, double strip) {
+	if (level == 0) {
+		if (rval < BARRIER)
+			return false;
+		*fpt = ltime + (rtime - ltime)*(BARRIER - lval)/(rval - lval);
+		return true;
+	}
+	if (MAX(lval, rval) < BARRIER - strip)
+		return false;
+
+	if (size + 1 > alloc) {
+		alloc *= 2;
+		cinv = realloc(cinv, alloc*(alloc+1)/2 * sizeof(*cinv));
+		times = realloc(times, alloc * sizeof(*times));
+		values = realloc(values, alloc * sizeof(*values));
+	}
+
+	double mtime = (ltime + rtime) / 2;
+	extend(cinv, times, mtime, size);
+	double var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
+	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
+	       /* FIXME this doesn’t work with drift */
+	double mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
+
+	strip /= pow(2, hurst);
+	return visitfpt(fpt, ltime, lval, mtime, mval, level - 1, strip) ||
+	       visitfpt(fpt, mtime, mval, rtime, rval, level - 1, strip);
+}
+
 int main(int argc, char **argv) {
 	unsigned logn = 8;
 	unsigned long seed = 0;
-	unsigned iters = 0;
+	unsigned iters = 0, levels = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "h:g:m:n:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "g:h:m:n:G:I:S:")) != -1) {
 		switch (c) {
-		case 'h': hurst = atof(optarg); break;
 		case 'g': logn = atoi(optarg); break;
+		case 'h': hurst = atof(optarg); break;
 		case 'm': lindrift = -atof(optarg); break; /* NB sign */
 		case 'n': fracdrift = -atof(optarg); break; /* NB sign */
+		case 'E': epsilon = atof(optarg); break;
+		case 'G': levels = atoi(optarg); break;
 		case 'I': iters = atoi(optarg); break;
 		case 'S': seed = atol(optarg); break;
 		}
@@ -106,15 +152,18 @@ int main(int argc, char **argv) {
 
 	unsigned n = 1u << logn;
 	double dt = 1.0 / n;
+	double strip = erfcinv(2*epsilon) * sqrt(4 / pow(2, 2*hurst) - 1) *
+	               pow(dt, hurst);
 
-	printf("# First passage times of fractional Brownian Motion with drift "
-	       "using Davies-Harte method\n"
+	printf("# First passage times of fractional Brownian motion with drift"
+	       "\n"
 	       "# H: %g\n"
-	       "# System size: %i\n"
+	       "# System size: %u\n"
+	       "# Effective system size: 2^(%u)\n"
 	       "# Linear drift: %g\n"
 	       "# Fractional drift: %g\n"
-	       "# Iterations: %i\n",
-	       hurst, n, lindrift, fracdrift, iters);
+	       "# Iterations: %u\n",
+	       hurst, n, logn + levels, lindrift, fracdrift, iters);
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
@@ -142,8 +191,12 @@ int main(int argc, char **argv) {
 
 	/* Compute inverse correlation matrices */
 
-	double **cinvs = malloc(n * sizeof(*cinvs)),
-	        *times = malloc(n * sizeof(*times));
+	alloc = n;
+	cinv = malloc(n*(n+1)/2 * sizeof(*cinv));
+	times = malloc(n * sizeof(*times));
+	values = malloc(n * sizeof(*values));
+
+	double **cinvs = malloc(n * sizeof(*cinvs));
 
 	for (unsigned i = 0; i < n; i++) {
 		cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
@@ -151,7 +204,7 @@ int main(int argc, char **argv) {
 			memcpy(cinvs[i], cinvs[i-1],
 			       i*(i+1)/2 * sizeof(*cinvs[i]));
 		}
-		addpoint(cinvs[i], times, (i+1)*dt, i);
+		extend(cinvs[i], times, (i+1)*dt, i);
 	}
 
 	/* Iterate */
@@ -181,29 +234,37 @@ int main(int argc, char **argv) {
 
 		/* FIXME Kahan summation ? */
 		double sum = 0.0;
-		for (unsigned i = 0; i < n; i++) {
-			double a = noise[i] + dt * (lindrift + fracdrift * pow((i + 0.5)*dt, 2.0*hurst - 1.0));
-			trace[i] = sum += a;
+		for (size = 0; size < n; size++) {
+			if (sum >= BARRIER) break;
+			double a = noise[size] + dt * (lindrift + fracdrift * pow((size + 0.5)*dt, 2.0*hurst - 1.0));
+			times[size] = (size + 1) * dt;
+			values[size] = trace[size] = sum += a;
 		}
+		memcpy(cinv, cinvs[size-1], size*(size+1)/2 * sizeof(*cinv));
+		/* for (unsigned i = 0; i < n; i++)
+			printf("# trace[%2i] = %g\n", i, trace[i]); */
 
 		/* Find first passage */
 
-		unsigned i;
-		double tprev = 0.0;
-		for (i = 0; i < n; i++) {
-			if (trace[i] > BARRIER)
+		double fpt = 1.0, prevtime = 0.0, prevval = 0.0;
+		for (unsigned i = 0; i < n; i++) {
+			if (visitfpt(&fpt, prevtime, prevval, (i + 1)*dt,
+			             trace[i], levels, strip))
 				break;
-			tprev = trace[i];
+			prevtime = (i + 1)*dt;
+			prevval  = trace[i];
 		}
-		printf("%g\n", i >= n ? 1.0 : dt * (i + (BARRIER - tprev) / (trace[i] - tprev)));
+		printf("%g\n", fpt);
 	}
 
 	fftw_free(noise);
 	fftw_destroy_plan(noiseplan);
 
+	free(cinv); free(times); free(values);
+
 	for (unsigned i = 0; i < n; i++)
 		free(cinvs[i]);
-	free(cinvs); free(times);
+	free(cinvs);
 
 	fftw_free(eigen);
 
