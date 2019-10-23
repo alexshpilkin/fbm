@@ -112,23 +112,25 @@ int main(int argc, char **argv) {
 
 	/* Iterate */
 
-	fftw_complex *temp = fftw_alloc_complex(n + 1);
-	double *noise = (double *)temp, *trace = noise;
-	fftw_plan noiseplan = fftw_plan_dft_c2r_1d(2 * n, temp, noise,
-	                                           FFTW_ESTIMATE);
+	double *noise = fftw_alloc_real(2*n), *trace = noise;
+	fftw_plan noiseplan = fftw_plan_r2r_1d(2*n, noise, noise,
+	                                       FFTW_HC2R, FFTW_ESTIMATE);
 
 	for (int iter = 0; iter < iters; iter++) {
 		/* Generate noise */
 
-		for (unsigned i = 0 /* FIXME 1 */; i < n; i++) {
-			temp[i][0] = sqrt(0.25 * eigen[i] / n) *
-			             gsl_ran_gaussian_ziggurat(rng, 1.0);
-			temp[i][1] = sqrt(0.25 * eigen[i] / n) *
-			             gsl_ran_gaussian_ziggurat(rng, 1.0);
+		gsl_ran_gaussian_ziggurat(rng, 1.0); /* FIXME Sync with  */
+		gsl_ran_gaussian_ziggurat(rng, 1.0); /* Walter’s version */
+		for (unsigned i = 1; i < n; i++) {
+			noise[i] = sqrt(0.25 * eigen[i] / n) *
+			           gsl_ran_gaussian_ziggurat(rng, 1.0);
+			noise[2*n-i] = sqrt(0.25 * eigen[i] / n) *
+			               gsl_ran_gaussian_ziggurat(rng, 1.0);
 		}
-		temp[0][0] = sqrt(0.5 * eigen[0] / n) * gsl_ran_gaussian_ziggurat(rng, 1.0);
-		temp[n][0] = sqrt(0.5 * eigen[n] / n) * gsl_ran_gaussian_ziggurat(rng, 1.0);
-		temp[0][1] = temp[n][1] = 0.0;
+		noise[0] = sqrt(0.5 * eigen[0] / n) *
+		           gsl_ran_gaussian_ziggurat(rng, 1.0);
+		noise[n] = sqrt(0.5 * eigen[n] / n) *
+		           gsl_ran_gaussian_ziggurat(rng, 1.0);
 		fftw_execute(noiseplan);
 
 		/* Integrate */
@@ -152,7 +154,7 @@ int main(int argc, char **argv) {
 		printf("%g\n", i > n ? 1.0 : dt * (i - 1 + (BARRIER - trace[i-1]) / (trace[i] - trace[i-1])));
 	}
 
-	fftw_free(temp);
+	fftw_free(noise);
 	fftw_destroy_plan(noiseplan);
 	fftw_free(eigen);
 
