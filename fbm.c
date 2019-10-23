@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
 		case 'm': lindrift = -atof(optarg); break; /* NB sign */
 		case 'n': fracdrift = -atof(optarg); break; /* NB sign */
 		case 'I': iters = atoi(optarg); break;
-		case 'S': seed = atoi(optarg); break;
+		case 'S': seed = atol(optarg); break;
 		}
 	}
 
@@ -87,9 +87,8 @@ int main(int argc, char **argv) {
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
-	assert(seed >= 0);
 	gsl_rng_set(rng, (unsigned)seed);
-	printf("# RNG seed: %i\n", seed);
+	printf("# RNG seed: %lu\n", seed);
 
 	/* Compute circulant eigenvalues */
 
@@ -116,7 +115,7 @@ int main(int argc, char **argv) {
 	fftw_plan noiseplan = fftw_plan_r2r_1d(2*n, noise, noise,
 	                                       FFTW_HC2R, FFTW_ESTIMATE);
 
-	for (int iter = 0; iter < iters; iter++) {
+	for (unsigned iter = 0; iter < iters; iter++) {
 		/* Generate noise */
 
 		gsl_ran_gaussian_ziggurat(rng, 1.0); /* FIXME Sync with  */
