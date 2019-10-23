@@ -6,19 +6,24 @@
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define BARRIER 0.1
 
-gsl_rng *rng;
-
-double inner(double *vec1, double *vec2, size_t size) {
+static double inner(double const *vec1, double const *vec2, size_t size) {
 	double sum = 0.0;
 	for (size_t i = 0; i < size; i++)
 		sum += vec1[i] * vec2[i];
 	return sum;
 }
 
-void symrk1(double *restrict out, double coe, double const *vec, size_t size) {
+static void scavec(double *out, double coe, double const *vec, size_t size) {
+	for (size_t i = 0; i < size; i++)
+		out[i] = coe * vec[i];
+}
+
+static void symrk1(double *restrict out, double coe, double const *vec,
+                   size_t size) {
 	size_t k = 0;
 	for (size_t i = 0; i < size; i++) {
 		double tmp = coe * vec[i];
@@ -27,8 +32,8 @@ void symrk1(double *restrict out, double coe, double const *vec, size_t size) {
 	}
 }
 
-void matvec(double *restrict out, double const *mat, double const *vec,
-            size_t size) {
+static void matvec(double *restrict out, double const *mat, double const *vec,
+                   size_t size) {
 	for (size_t i = 0; i < size; i++) {
 		double sum = 0.0; size_t j, k;
 		for (j = 0, k = i*(i+1)/2; j < i; j++, k++)
@@ -39,26 +44,52 @@ void matvec(double *restrict out, double const *mat, double const *vec,
 	}
 }
 
-void printvec(double *vec, size_t size) { /* FIXME debugging only */
+static void printvec(double *vec, size_t size) { /* FIXME debugging only */
 	printf("[ ");
 	for (size_t row = 0; row < size; row++)
-		printf("%g ", *vec++);
+		printf("% .4f ", *vec++);
 	printf("]^T\n");
 }
 
-void printmat(double *mat, size_t size) { /* FIXME debugging only */
+static void printmat(double *mat, size_t size) { /* FIXME debugging only */
 	for (size_t row = 0; row < size; row++) {
 		printf("[ ");
 		for (size_t col = 0; col <= row; col++)
-			printf("%g ", *mat++);
+			printf("% .4f ", *mat++);
 		printf("]\n");
 	}
 }
 
+static gsl_rng *rng;
+static double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
+
+static void addpoint(double *restrict cinv, double *restrict times, double time,
+                     size_t size) {
+	/* FIXME Inner-loop allocation */
+	double *gamma = malloc(size * sizeof(*gamma)),
+	       *g = malloc(size * sizeof(*g));
+
+	times[size] = time;
+
+	assert(time >= 0.0);
+	for (size_t i = 0; i < size; i++) {
+		assert(times[i] >= 0.0);
+		gamma[i] = pow(times[i], 2*hurst) + pow(time, 2*hurst) -
+		           pow(fabs(times[i] - time), 2*hurst);
+	}
+	matvec(g, cinv, gamma, size);
+
+	double sigsq = 2.0 * pow(time, 2*hurst) - inner(gamma, g, size);
+	symrk1(cinv, 1.0/sigsq, g, size);
+	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
+	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
+
+	free(gamma); free(g);
+}
+
 int main(int argc, char **argv) {
-	double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0;
 	unsigned logn = 8;
-	unsigned long seed = -1;
+	unsigned long seed = 0;
 	unsigned iters = 0;
 
 	int c;
@@ -109,6 +140,20 @@ int main(int argc, char **argv) {
 	fftw_execute(eigenplan);
 	fftw_destroy_plan(eigenplan);
 
+	/* Compute inverse correlation matrices */
+
+	double **cinvs = malloc(n * sizeof(*cinvs)),
+	        *times = malloc(n * sizeof(*times));
+
+	for (unsigned i = 0; i < n; i++) {
+		cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
+		if (i > 0) { /* Avoid undefined behaviour */
+			memcpy(cinvs[i], cinvs[i-1],
+			       i*(i+1)/2 * sizeof(*cinvs[i]));
+		}
+		addpoint(cinvs[i], times, (i+1)*dt, i);
+	}
+
 	/* Iterate */
 
 	double *noise = fftw_alloc_real(2*n), *trace = noise;
@@ -155,6 +200,11 @@ int main(int argc, char **argv) {
 
 	fftw_free(noise);
 	fftw_destroy_plan(noiseplan);
+
+	for (unsigned i = 0; i < n; i++)
+		free(cinvs[i]);
+	free(cinvs); free(times);
+
 	fftw_free(eigen);
 
 	fftw_cleanup();
