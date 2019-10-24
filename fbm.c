@@ -152,15 +152,14 @@ int main(int argc, char **argv) {
 	double strip = erfcinv(2*epsilon) * sqrt(4 / pow(2, 2*hurst) - 1) *
 	               pow(dt, hurst);
 
-	printf("# First passage times of fractional Brownian motion with drift"
-	       "\n"
-	       "# H: %g\n"
-	       "# System size: %u\n"
-	       "# Effective system size: 2^(%u)\n"
+	printf("# Hurst parameter: %g\n"
 	       "# Linear drift: %g\n"
 	       "# Fractional drift: %g\n"
+	       "# Grid size: 2^{%u}\n"
+	       "# Effective grid size: 2^{%u}\n"
+	       "# Error tolerance: %g\n"
 	       "# Iterations: %u\n",
-	       hurst, n, logn + levels, lindrift, fracdrift, iters);
+	       hurst, lindrift, fracdrift, logn, logn + levels, epsilon, iters);
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
