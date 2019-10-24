@@ -241,14 +241,16 @@ int main(int argc, char **argv) {
 
 		/* Find first passage */
 
-		double fpt = 1.0, prevtime = 0.0, prevval = 0.0;
+		double fpt = 1.0, prevtime = 0.0, prevpos = 0.0;
 		for (unsigned i = 0; i < n; i++) {
-			double val = values[i] + lindrift * (i+1)*dt + fracdrift * pow((i+1)*dt, 2*hurst);
-			if (visitfpt(&fpt, prevtime, prevval, (i+1)*dt, val,
+			double time = (i + 1) * dt,
+			       pos = values[i] + lindrift * (i+1)*dt +
+			             fracdrift * pow((i+1)*dt, 2*hurst);
+			if (visitfpt(&fpt, prevtime, prevpos, time, pos,
 			             levels, strip))
 				break;
-			prevtime = (i + 1)*dt;
-			prevval  = val;
+			prevtime = time;
+			prevpos  = pos;
 		}
 		printf("%g\n", fpt);
 	}
