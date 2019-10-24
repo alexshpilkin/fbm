@@ -120,7 +120,6 @@ bool visitfpt(double *fpt, double ltime, double lpos, double rtime, double rpos,
 	extend(cinv, times, mtime, size);
 	double var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	       /* FIXME this doesn’t work with drift */
 	double mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)),
 	       mpos = mval + lindrift * mtime + fracdrift * pow(mtime, 2*hurst);
 
