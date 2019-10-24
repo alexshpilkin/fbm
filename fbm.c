@@ -12,12 +12,13 @@
 #define BARRIER 0.1
 
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
+#define SQRTPI 1.77245385090551602729816748334114518
 
 static double erfcinv(double x) {
 	/* Blair, Edwards, Johnson. "Rational Chebyshev approximations for the
 	 * inverse of the error function". Math.Comp. 30 (1976), 827--830.
 	 */
-	double eta = -log(sqrt(M_PI) * x), logeta = log(eta);
+	double eta = -log(SQRTPI * x), logeta = log(eta);
 	return sqrt(eta - 0.5*logeta + (0.25*logeta - 0.5)/eta);
 }
 
