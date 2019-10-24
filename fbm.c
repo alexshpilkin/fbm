@@ -74,31 +74,25 @@ static void printmat(double *mat, size_t size) { /* FIXME debugging only */
 static double hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9;
 static gsl_rng *rng;
 static size_t size, alloc;
-static double *cinv, *times, *values;
+static double *cinv, *times, *values, *gamma_, *g;
 
 static void extend(double *restrict cinv, double *restrict times, double time,
                    size_t size) {
-	/* FIXME Inner-loop allocation */
-	double *gamma = malloc(size * sizeof(*gamma)),
-	       *g = malloc(size * sizeof(*g));
-
 	times[size] = time;
 
 	assert(time >= 0.0);
 	for (size_t i = 0; i < size; i++) {
 		assert(times[i] >= 0.0);
-		gamma[i] = pow(times[i], 2*hurst) + pow(time, 2*hurst) -
-		           pow(fabs(times[i] - time), 2*hurst);
+		gamma_[i] = pow(times[i], 2*hurst) + pow(time, 2*hurst) -
+		            pow(fabs(times[i] - time), 2*hurst);
 	}
-	matvec(g, cinv, gamma, size);
+	matvec(g, cinv, gamma_, size);
 
-	double sigsq = 2.0 * pow(time, 2*hurst) - inner(gamma, g, size);
+	double sigsq = 2.0 * pow(time, 2*hurst) - inner(gamma_, g, size);
 	assert(sigsq >= 0.0);
 	symrk1(cinv, 1.0/sigsq, g, size);
 	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
-
-	free(gamma); free(g);
 }
 
 bool visitfpt(double *fpt, double ltime, double lval, double rtime, double rval,
@@ -117,6 +111,8 @@ bool visitfpt(double *fpt, double ltime, double lval, double rtime, double rval,
 		cinv = realloc(cinv, alloc*(alloc+1)/2 * sizeof(*cinv));
 		times = realloc(times, alloc * sizeof(*times));
 		values = realloc(values, alloc * sizeof(*values));
+		gamma_ = realloc(gamma_, alloc * sizeof(*gamma_));
+		g = realloc(g, alloc * sizeof(*g));
 	}
 
 	double mtime = (ltime + rtime) / 2;
@@ -195,9 +191,10 @@ int main(int argc, char **argv) {
 	cinv = malloc(n*(n+1)/2 * sizeof(*cinv));
 	times = malloc(n * sizeof(*times));
 	values = malloc(n * sizeof(*values));
+	gamma_ = malloc(n * sizeof(*gamma_));
+	g = malloc(n * sizeof(*g));
 
 	double **cinvs = malloc(n * sizeof(*cinvs));
-
 	for (unsigned i = 0; i < n; i++) {
 		cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
 		if (i > 0) { /* Avoid undefined behaviour */
@@ -257,10 +254,9 @@ int main(int argc, char **argv) {
 		printf("%g\n", fpt);
 	}
 
-	fftw_free(noise);
-	fftw_destroy_plan(noiseplan);
+	fftw_free(noise); fftw_destroy_plan(noiseplan);
 
-	free(cinv); free(times); free(values);
+	free(cinv); free(times); free(values); free(gamma_); free(g);
 
 	for (unsigned i = 0; i < n; i++)
 		free(cinvs[i]);
