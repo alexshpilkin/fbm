@@ -206,7 +206,7 @@ int main(int argc, char **argv) {
 
 	/* Iterate */
 
-	double *noise = fftw_alloc_real(2*n), *trace = noise;
+	double *noise = fftw_alloc_real(2*n);
 	fftw_plan noiseplan = fftw_plan_r2r_1d(2*n, noise, noise,
 	                                       FFTW_HC2R, FFTW_ESTIMATE);
 
@@ -235,21 +235,19 @@ int main(int argc, char **argv) {
 			if (sum >= BARRIER) break;
 			double a = noise[size] + dt * (lindrift + fracdrift * pow((size + 0.5)*dt, 2.0*hurst - 1.0));
 			times[size] = (size + 1) * dt;
-			values[size] = trace[size] = sum += a;
+			values[size] = sum += a;
 		}
 		memcpy(cinv, cinvs[size-1], size*(size+1)/2 * sizeof(*cinv));
-		/* for (unsigned i = 0; i < n; i++)
-			printf("# trace[%2i] = %g\n", i, trace[i]); */
 
 		/* Find first passage */
 
 		double fpt = 1.0, prevtime = 0.0, prevval = 0.0;
 		for (unsigned i = 0; i < n; i++) {
 			if (visitfpt(&fpt, prevtime, prevval, (i + 1)*dt,
-			             trace[i], levels, strip))
+			             values[i], levels, strip))
 				break;
 			prevtime = (i + 1)*dt;
-			prevval  = trace[i];
+			prevval  = values[i];
 		}
 		printf("%g\n", fpt);
 	}
