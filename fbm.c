@@ -95,15 +95,15 @@ static void extend(double *restrict cinv, double *restrict times, double time,
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
 }
 
-bool visitfpt(double *fpt, double ltime, double lval, double rtime, double rval,
+bool visitfpt(double *fpt, double ltime, double lpos, double rtime, double rpos,
               unsigned level, double strip) {
 	if (level == 0) {
-		if (rval < BARRIER)
+		if (rpos < BARRIER)
 			return false;
-		*fpt = ltime + (rtime - ltime)*(BARRIER - lval)/(rval - lval);
+		*fpt = ltime + (rtime - ltime)*(BARRIER - lpos)/(rpos - lpos);
 		return true;
 	}
-	if (MAX(lval, rval) < BARRIER - strip)
+	if (MAX(lpos, rpos) < BARRIER - strip)
 		return false;
 
 	if (size + 1 > alloc) {
@@ -120,11 +120,12 @@ bool visitfpt(double *fpt, double ltime, double lval, double rtime, double rval,
 	double var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
 	       /* FIXME this doesn’t work with drift */
-	double mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
+	double mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)),
+	       mpos = mval + lindrift * mtime + fracdrift * pow(mtime, 2*hurst);
 
 	strip /= pow(2, hurst);
-	return visitfpt(fpt, ltime, lval, mtime, mval, level - 1, strip) ||
-	       visitfpt(fpt, mtime, mval, rtime, rval, level - 1, strip);
+	return visitfpt(fpt, ltime, lpos, mtime, mpos, level - 1, strip) ||
+	       visitfpt(fpt, mtime, mpos, rtime, rpos, level - 1, strip);
 }
 
 int main(int argc, char **argv) {
@@ -232,10 +233,10 @@ int main(int argc, char **argv) {
 		/* FIXME Kahan summation ? */
 		double sum = 0.0;
 		for (size = 0; size < n; size++) {
-			if (sum >= BARRIER) break;
-			double a = noise[size] + dt * (lindrift + fracdrift * pow((size + 0.5)*dt, 2.0*hurst - 1.0));
+			if (sum + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= BARRIER)
+				break;
 			times[size] = (size + 1) * dt;
-			values[size] = sum += a;
+			values[size] = sum += noise[size];
 		}
 		memcpy(cinv, cinvs[size-1], size*(size+1)/2 * sizeof(*cinv));
 
@@ -243,11 +244,12 @@ int main(int argc, char **argv) {
 
 		double fpt = 1.0, prevtime = 0.0, prevval = 0.0;
 		for (unsigned i = 0; i < n; i++) {
-			if (visitfpt(&fpt, prevtime, prevval, (i + 1)*dt,
-			             values[i], levels, strip))
+			double val = values[i] + lindrift * (i+1)*dt + fracdrift * pow((i+1)*dt, 2*hurst);
+			if (visitfpt(&fpt, prevtime, prevval, (i+1)*dt, val,
+			             levels, strip))
 				break;
 			prevtime = (i + 1)*dt;
-			prevval  = values[i];
+			prevval  = val;
 		}
 		printf("%g\n", fpt);
 	}
