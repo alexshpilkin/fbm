@@ -1,3 +1,5 @@
+#define __STDC_WANT_IEC_60559_TYPES_EXT__ 1
+
 #include <assert.h>
 #include <fftw3.h>
 #include <getopt.h>
@@ -11,9 +13,19 @@
 
 #define BARRIER 0.1
 
+#if defined(USE_LDBL)
 typedef long double real_t;
 #define REAL(TOK)   TOK ## l
 #define FFTWR(TOK)  fftwl_ ## TOK
+#elif defined(USE_FLT128)
+typedef _Float128 real_t;
+#define REAL(TOK)   TOK ## f128
+#define FFTWR(TOK)  fftwq_ ## TOK
+#else
+typedef double real_t;
+#define REAL(TOK)   TOK
+#define FFTWR(TOK)  fftw_ ## TOK
+#endif
 
 #define fabsr  REAL(fabs)
 #define logr   REAL(log)
