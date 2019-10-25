@@ -210,20 +210,21 @@ int main(int argc, char **argv) {
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
 	               powr(dt, hurst);
 
-	printf("# Hurst parameter: %g\n"
-	       "# Linear drift: %g\n"
-	       "# Fractional drift: %g\n"
-	       "# Grid size: 2^{%u}\n"
-	       "# Effective grid size: 2^{%u}\n"
-	       "# Error tolerance: %g\n"
-	       "# Iterations: %u\n",
-	       (double)hurst, (double)lindrift, (double)fracdrift, logn,
-	       logn + levels, (double)epsilon, iters);
-
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
 	gsl_rng_set(rng, (unsigned)seed);
-	printf("# RNG seed: %lu\n", seed);
+
+	printf("# Hurst parameter: %.17e\n"
+	       "# Linear drift: %.17e\n"
+	       "# Fractional drift: %.17e\n"
+	       "# Log of grid size: %u\n"
+	       "# Levels to descend: %u\n"
+	       "# Error tolerance: %.17e\n"
+	       "# Iterations: %u\n"
+	       "# RNG seed: %lu\n"
+	       "#\n",
+	       (double)hurst, (double)lindrift, (double)fracdrift, logn,
+	       levels, (double)epsilon, iters, seed);
 
 	/* Compute circulant eigenvalues */
 
