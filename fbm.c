@@ -28,9 +28,16 @@ typedef long double real_t;
 #define fftwr_plan          FFTWR(plan)
 #define fftwr_plan_r2r_1d   FFTWR(plan_r2r_1d)
 
+#define countof(A) (sizeof((A)) / sizeof((A)[0]))
 #define MAX(A, B) ((A) > (B) ? (A) : (B))
 /* #define PI 3.14159265358979323846264338327950288 */
 #define SQRTPI REAL(1.77245385090551602729816748334114518)
+
+#ifdef __GNUC__
+# define slower(X) (__builtin_expect((X), 0))
+#else
+# define slower(X) (X)
+#endif
 
 static real_t erfcinv(real_t x) {
 	/* Blair, Edwards, Johnson. "Rational Chebyshev approximations for the
@@ -90,6 +97,15 @@ static void printmat(real_t *mat, size_t size) { /* FIXME debugging only */
 	}
 }
 
+typedef enum {
+	TVARIANCE = 1,
+} tflag_t;
+
+static struct {tflag_t flag; char const *name;} tflags[] = {
+	{TVARIANCE, "variance"}
+};
+
+static tflag_t trace = 0;
 static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9;
 static gsl_rng *rng;
 static size_t size, alloc;
@@ -140,6 +156,8 @@ bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime, real_t rpos,
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
 	real_t mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)),
 	       mpos = mval + lindrift * mtime + fracdrift * pow(mtime, 2*hurst);
+	if slower(trace & TVARIANCE)
+		printf("# variance %u %g\n", level, (double)var);
 
 	strip /= pow(2, hurst);
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level - 1, strip) ||
@@ -152,7 +170,7 @@ int main(int argc, char **argv) {
 	unsigned iters = 0, levels = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "g:h:m:n:G:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "g:h:m:n:t:G:I:S:")) != -1) {
 		switch (c) {
 		case 'g': logn = atoi(optarg); break;
 		case 'h': hurst = atof(optarg); break;
@@ -162,6 +180,13 @@ int main(int argc, char **argv) {
 		case 'G': levels = atoi(optarg); break;
 		case 'I': iters = atoi(optarg); break;
 		case 'S': seed = atol(optarg); break;
+
+		case 't':
+			for (size_t i = 0; i < countof(tflags); i++) {
+				if (!strcmp(optarg, tflags[i].name))
+					trace |= tflags[i].flag;
+			}
+			break;
 		}
 	}
 
