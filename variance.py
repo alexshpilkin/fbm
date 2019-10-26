@@ -46,4 +46,6 @@ if __name__ == '__main__':
 			plotvariances(file)
 	if len(argv) == 1:
 		plotvariances(stdin)
+	if len(argv) > 2:
+		plt.legend(argv[1:])
 	plt.show()
