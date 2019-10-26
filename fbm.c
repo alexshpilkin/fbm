@@ -10,7 +10,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/resource.h>
 
 #define BARRIER 0.1
 
@@ -112,12 +111,10 @@ static void printmat(real_t *mat, size_t size) { /* FIXME debugging only */
 
 typedef enum {
 	TVARIANCE = 1,
-	TUSAGE = 2,
 } tflag_t;
 
 static struct {tflag_t flag; char const *name;} tflags[] = {
 	{TVARIANCE, "variance"},
-	{TUSAGE, "usage"},
 };
 
 static tflag_t trace = 0;
@@ -327,14 +324,5 @@ int main(int argc, char **argv) {
 
 	fftwr_cleanup();
 	gsl_rng_free(rng);
-
-	if slower(trace & TUSAGE) {
-		struct rusage rusage;
-		getrusage(RUSAGE_SELF, &rusage);
-		printf("# usage %li.%.6li %li\n",
-		       (long)rusage.ru_utime.tv_sec,
-		       (long)rusage.ru_utime.tv_usec,
-		       rusage.ru_maxrss);
-	}
 	return EXIT_SUCCESS;
 }
