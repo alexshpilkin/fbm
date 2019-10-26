@@ -46,8 +46,10 @@ typedef double real_t;
 #define SQRTPI REAL(1.77245385090551602729816748334114518)
 
 #ifdef __GNUC__
+#define faster(X) (__builtin_expect(!!(X), 1))
 #define slower(X) (__builtin_expect((X), 0))
 #else
+#define faster(X) (!!(X))
 #define slower(X) (X)
 #endif
 
@@ -251,14 +253,17 @@ int main(int argc, char **argv) {
 	gamma_ = malloc(n * sizeof(*gamma_));
 	g = malloc(n * sizeof(*g));
 
-	real_t **cinvs = malloc(n * sizeof(*cinvs));
-	for (unsigned i = 0; i < n; i++) {
-		cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
-		if (i > 0) { /* Avoid undefined behaviour */
-			memcpy(cinvs[i], cinvs[i-1],
-			       i*(i+1)/2 * sizeof(*cinvs[i]));
+	real_t **cinvs;
+	if faster(levels > 0) {
+		cinvs = malloc(n * sizeof(*cinvs));
+		for (unsigned i = 0; i < n; i++) {
+			cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
+			if (i > 0) { /* Avoid undefined behaviour */
+				memcpy(cinvs[i], cinvs[i-1],
+				       i*(i+1)/2 * sizeof(*cinvs[i]));
+			}
+			extend(cinvs[i], times, (i+1)*dt, i);
 		}
-		extend(cinvs[i], times, (i+1)*dt, i);
 	}
 
 	/* Iterate */
@@ -294,7 +299,10 @@ int main(int argc, char **argv) {
 			times[size] = (size + 1) * dt;
 			values[size] = sum += noise[size];
 		}
-		memcpy(cinv, cinvs[size-1], size*(size+1)/2 * sizeof(*cinv));
+		if faster(levels > 0) {
+			memcpy(cinv, cinvs[size-1],
+			       size*(size+1)/2 * sizeof(*cinv));
+		}
 
 		/* Find first passage */
 
@@ -316,9 +324,11 @@ int main(int argc, char **argv) {
 
 	free(cinv); free(times); free(values); free(gamma_); free(g);
 
-	for (unsigned i = 0; i < n; i++)
-		free(cinvs[i]);
-	free(cinvs);
+	if faster(levels > 0) {
+		for (unsigned i = 0; i < n; i++)
+			free(cinvs[i]);
+		free(cinvs);
+	}
 
 	fftwr_free(eigen);
 
