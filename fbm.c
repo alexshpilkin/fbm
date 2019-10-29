@@ -1,5 +1,3 @@
-#define __STDC_WANT_IEC_60559_TYPES_EXT__ 1
-
 #include <assert.h>
 #include <fftw3.h>
 #include <getopt.h>
@@ -7,6 +5,9 @@
 #include <gsl/gsl_rng.h>
 #include <limits.h>
 #include <math.h>
+#ifdef USE_QUAD
+#include <quadmath.h>
+#endif
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,9 +18,9 @@
 typedef long double real_t;
 #define REAL(TOK)   TOK ## l
 #define FFTWR(TOK)  fftwl_ ## TOK
-#elif defined(USE_FLT128)
-typedef _Float128 real_t;
-#define REAL(TOK)   TOK ## f128
+#elif defined(USE_QUAD)
+typedef __float128 real_t;
+#define REAL(TOK)   TOK ## q
 #define FFTWR(TOK)  fftwq_ ## TOK
 #else
 typedef double real_t;
