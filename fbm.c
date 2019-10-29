@@ -173,7 +173,7 @@ bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime, real_t rpos,
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
 
-	strip /= pow(2, hurst);
+	strip /= powr(2, hurst);
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level - 1, strip) ||
 	       visitfpt(fpt, mtime, mpos, rtime, rpos, level - 1, strip);
 }
