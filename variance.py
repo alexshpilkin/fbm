@@ -34,18 +34,20 @@ def readvariances(file):
 
 	return level, mean/brown, std/np.sqrt(length)/brown
 
-def plotvariances(file, fmt='.'):
+def plotvariances(file, label=None):
 	x, y, yerr = readvariances(file)
-	plt.errorbar(x, y, yerr, fmt=fmt)
+	plt.errorbar(x, y, yerr, fmt='.', label=label)
 
 if __name__ == '__main__':
 	from sys import argv, stdin
 
 	for name in argv[1:]:
 		with open(name, 'r') as file:
-			plotvariances(file)
+			plotvariances(file, label=name)
 	if len(argv) == 1:
 		plotvariances(stdin)
 	if len(argv) > 2:
-		plt.legend(argv[1:])
+		plt.legend()
+	plt.xlabel("$\\ell$")
+	plt.ylabel("$\\langle\\sigma^2\\rangle / 2^{-2\\ell H}(2^{1-2H}-1/2)$")
 	plt.show()
