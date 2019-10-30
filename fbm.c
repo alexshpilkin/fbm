@@ -122,6 +122,7 @@ static struct {tflag_t flag; char const *name;} tflags[] = {
 
 static tflag_t trace = 0;
 static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9;
+static real_t stripfac;
 static gsl_rng *rng;
 static size_t size, alloc;
 static real_t *cinv, *times, *values, *gamma_, *g;
@@ -174,9 +175,9 @@ bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime, real_t rpos,
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
 
-	strip /= powr(2, hurst);
-	return visitfpt(fpt, ltime, lpos, mtime, mpos, level - 1, strip) ||
-	       visitfpt(fpt, mtime, mpos, rtime, rpos, level - 1, strip);
+	strip *= stripfac;
+	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
+	       visitfpt(fpt, mtime, mpos, rtime, rpos, level-1, strip);
 }
 
 int main(int argc, char **argv) {
@@ -209,6 +210,7 @@ int main(int argc, char **argv) {
 	real_t dt = 1.0 / (real_t)n;
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
 	               powr(dt, hurst);
+	stripfac = powr(2, -hurst);
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
