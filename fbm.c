@@ -122,7 +122,10 @@ static struct {tflag_t flag; char const *name;} tflags[] = {
 
 static tflag_t trace = 0;
 static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9,
-              barrier = 1.0, stripfac;
+              stripfac;
+#ifdef DO_FPT
+static real_t barrier = 1.0;
+#endif
 static gsl_rng *rng;
 static size_t size, alloc;
 static real_t *cinv, *times, *values, *gamma_, *g;
@@ -171,6 +174,7 @@ static void sample(real_t *restrict pos, real_t time, unsigned level) {
 		bisects[level-1]++;
 }
 
+#ifdef DO_FPT
 static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
                      real_t rpos, unsigned level, real_t strip) {
 	if (level == 0) {
@@ -188,6 +192,26 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
 	       visitfpt(fpt, mtime, mpos, rtime, rpos, level-1, strip);
 }
+#endif /* DO_FPT */
+
+#ifdef DO_MAX
+static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
+                     real_t rpos, unsigned level, real_t strip) {
+	if (level == 0) {
+		if (rpos > *max)
+			*max = rpos;
+		return;
+	}
+	if (MAX(lpos, rpos) < *max - strip)
+		return;
+
+	real_t mtime = (ltime + rtime)/2, mpos;
+	sample(&mpos, mtime, level);
+	strip *= stripfac;
+	visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
+	visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
+}
+#endif /* DO_MAX */
 
 int main(int argc, char **argv) {
 	unsigned logn = 8;
@@ -197,7 +221,9 @@ int main(int argc, char **argv) {
 	int c;
 	while ((c = getopt(argc, argv, "b:g:h:m:n:t:G:I:S:")) != -1) {
 		switch (c) {
+#ifdef DO_FPT
 		case 'b': barrier = atof(optarg); break;
+#endif /* DO_FPT */
 		case 'g': logn = atoi(optarg); break;
 		case 'h': hurst = atof(optarg); break;
 		case 'm': lindrift = -atof(optarg); break; /* NB sign */
@@ -229,7 +255,9 @@ int main(int argc, char **argv) {
 	printf("# Hurst parameter: %.17e\n"
 	       "# Linear drift: %.17e\n"
 	       "# Fractional drift: %.17e\n"
+#ifdef DO_FPT
 	       "# Barrier height: %.17e\n"
+#endif /* DO_FPT */
 	       "# Log of grid size: %u\n"
 	       "# Levels to descend: %u\n"
 	       "# Error tolerance: %.17e\n"
@@ -237,7 +265,10 @@ int main(int argc, char **argv) {
 	       "# RNG seed: %lu\n"
 	       "#\n",
 	       (double)hurst, (double)lindrift, (double)fracdrift,
-	       (double)barrier, logn, levels, (double)epsilon, iters, seed);
+#ifdef DO_FPT
+	       (double)barrier,
+#endif /* DO_FPT */
+	       logn, levels, (double)epsilon, iters, seed);
 
 	/* Compute circulant eigenvalues */
 
@@ -311,8 +342,10 @@ int main(int argc, char **argv) {
 		/* FIXME Kahan summation ? */
 		real_t sum = 0.0;
 		for (size = 0; size < n; size++) {
+#ifdef DO_FPT
 			if (sum + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= barrier)
 				break;
+#endif /* DO_FPT */
 			times[size] = (size + 1) * dt;
 			values[size] = sum += noise[size];
 		}
@@ -321,18 +354,31 @@ int main(int argc, char **argv) {
 			       size*(size+1)/2 * sizeof(*cinv));
 		}
 
-		/* Find first passage */
+		/* Find first passage or maximum */
 
 		if slower(trace & TBISECTS)
 			memset(bisects, 0, levels * sizeof(*bisects));
-		real_t fpt = 1.0, prevtime = 0.0, prevpos = 0.0;
+
+#ifdef DO_FPT
+		real_t fpt = 1.0;
+#endif /* DO_FPT */
+#ifdef DO_MAX
+		real_t max = 0.0;
+#endif /* DO_MAX */
+		real_t prevtime = 0.0, prevpos = 0.0;
 		for (size_t i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
 			       pos = values[i] + lindrift * (i+1)*dt +
 			             fracdrift * powr((i+1)*dt, 2*hurst);
+#ifdef DO_FPT
 			if (visitfpt(&fpt, prevtime, prevpos, time, pos,
 			             levels, strip))
 				break;
+#endif /* DO_FPT */
+#ifdef DO_MAX
+			visitmax(&max, prevtime, prevpos, time, pos, levels,
+			         strip);
+#endif /* DO_MAX */
 			prevtime = time;
 			prevpos  = pos;
 		}
@@ -342,7 +388,12 @@ int main(int argc, char **argv) {
 				printf(" %u", bisects[i-1]);
 			printf("\n");
 		}
+#ifdef DO_FPT
 		printf("%g\n", (double)fpt);
+#endif /* DO_FPT */
+#ifdef DO_MAX
+		printf("%g\n", (double)max);
+#endif /* DO_MAX */
 	}
 
 	if (trace & TBISECTS)
