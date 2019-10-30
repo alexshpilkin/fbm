@@ -12,8 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BARRIER 0.1
-
 #if defined(USE_LDBL)
 typedef long double real_t;
 #define REAL(TOK)   TOK ## l
@@ -123,8 +121,8 @@ static struct {tflag_t flag; char const *name;} tflags[] = {
 };
 
 static tflag_t trace = 0;
-static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9;
-static real_t stripfac;
+static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9,
+              barrier = 1.0, stripfac;
 static gsl_rng *rng;
 static size_t size, alloc;
 static real_t *cinv, *times, *values, *gamma_, *g;
@@ -176,12 +174,12 @@ static void bisect(real_t *restrict mpos, real_t mtime, unsigned level) {
 static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
                      real_t rpos, unsigned level, real_t strip) {
 	if (level == 0) {
-		if (rpos < BARRIER)
+		if (rpos < barrier)
 			return false;
-		*fpt = ltime + (rtime - ltime)*(BARRIER - lpos)/(rpos - lpos);
+		*fpt = ltime + (rtime - ltime)*(barrier - lpos)/(rpos - lpos);
 		return true;
 	}
-	if (MAX(lpos, rpos) < BARRIER - strip)
+	if (MAX(lpos, rpos) < barrier - strip)
 		return false;
 
 	real_t mtime = (ltime + rtime)/2, mpos;
@@ -197,8 +195,9 @@ int main(int argc, char **argv) {
 	unsigned iters = 0, levels = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "g:h:m:n:t:G:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "b:g:h:m:n:t:G:I:S:")) != -1) {
 		switch (c) {
+		case 'b': barrier = atof(optarg); break;
 		case 'g': logn = atoi(optarg); break;
 		case 'h': hurst = atof(optarg); break;
 		case 'm': lindrift = -atof(optarg); break; /* NB sign */
@@ -230,14 +229,15 @@ int main(int argc, char **argv) {
 	printf("# Hurst parameter: %.17e\n"
 	       "# Linear drift: %.17e\n"
 	       "# Fractional drift: %.17e\n"
+	       "# Barrier height: %.17e\n"
 	       "# Log of grid size: %u\n"
 	       "# Levels to descend: %u\n"
 	       "# Error tolerance: %.17e\n"
 	       "# Iterations: %u\n"
 	       "# RNG seed: %lu\n"
 	       "#\n",
-	       (double)hurst, (double)lindrift, (double)fracdrift, logn,
-	       levels, (double)epsilon, iters, seed);
+	       (double)hurst, (double)lindrift, (double)fracdrift,
+	       (double)barrier, logn, levels, (double)epsilon, iters, seed);
 
 	/* Compute circulant eigenvalues */
 
@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
 		/* FIXME Kahan summation ? */
 		real_t sum = 0.0;
 		for (size = 0; size < n; size++) {
-			if (sum + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= BARRIER)
+			if (sum + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= barrier)
 				break;
 			times[size] = (size + 1) * dt;
 			values[size] = sum += noise[size];
