@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	unsigned n = 1u << logn;
+	size_t n = (size_t)1 << logn;
 	real_t dt = 1.0 / (real_t)n;
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
 	               powr(dt, hurst);
@@ -219,7 +219,7 @@ int main(int argc, char **argv) {
 
 	gsl_rng_env_setup();
 	rng = gsl_rng_alloc(gsl_rng_default);
-	gsl_rng_set(rng, (unsigned)seed);
+	gsl_rng_set(rng, seed);
 
 	printf("# Hurst parameter: %.17e\n"
 	       "# Linear drift: %.17e\n"
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
 	real_t prevexp, currexp, nextexp;
 	currexp = pow(1.0 / n, 2 * hurst);
 	nextexp = 0.0;
-	for (unsigned i = 0; i < n; i++) {
+	for (size_t i = 0; i < n; i++) {
 		prevexp = currexp;
 		currexp = nextexp;
 		nextexp = powr((real_t)(i+1) / (real_t)n, 2*hurst);
@@ -261,10 +261,10 @@ int main(int argc, char **argv) {
 	gamma_ = malloc(n * sizeof(*gamma_));
 	g = malloc(n * sizeof(*g));
 
-	real_t **cinvs;
+	real_t **cinvs = NULL;
 	if faster(levels > 0) {
 		cinvs = malloc(n * sizeof(*cinvs));
-		for (unsigned i = 0; i < n; i++) {
+		for (size_t i = 0; i < n; i++) {
 			cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
 			if (i > 0) { /* Avoid undefined behaviour */
 				memcpy(cinvs[i], cinvs[i-1],
@@ -288,7 +288,7 @@ int main(int argc, char **argv) {
 
 		gsl_ran_gaussian_ziggurat(rng, 1.0); /* FIXME Sync with  */
 		gsl_ran_gaussian_ziggurat(rng, 1.0); /* Walter’s version */
-		for (unsigned i = 1; i < n; i++) {
+		for (size_t i = 1; i < n; i++) {
 			noise[i] = sqrt(0.25 * eigen[i] / n) *
 			           gsl_ran_gaussian_ziggurat(rng, 1.0);
 			noise[2*n-i] = sqrt(0.25 * eigen[i] / n) *
@@ -320,7 +320,7 @@ int main(int argc, char **argv) {
 		if slower(trace & TBISECTS)
 			memset(bisects, 0, levels * sizeof(*bisects));
 		real_t fpt = 1.0, prevtime = 0.0, prevpos = 0.0;
-		for (unsigned i = 0; i < n; i++) {
+		for (size_t i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
 			       pos = values[i] + lindrift * (i+1)*dt +
 			             fracdrift * powr((i+1)*dt, 2*hurst);
@@ -345,7 +345,7 @@ int main(int argc, char **argv) {
 	fftwr_free(noise); fftwr_destroy_plan(noiseplan);
 
 	if faster(levels > 0) {
-		for (unsigned i = 0; i < n; i++)
+		for (size_t i = 0; i < n; i++)
 			free(cinvs[i]);
 		free(cinvs);
 	}
