@@ -147,7 +147,7 @@ static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
 }
 
-static void bisect(real_t *restrict mpos, real_t mtime, unsigned level) {
+static void sample(real_t *restrict pos, real_t time, unsigned level) {
 	assert(level > 0);
 
 	if (size + 1 > alloc) {
@@ -159,11 +159,11 @@ static void bisect(real_t *restrict mpos, real_t mtime, unsigned level) {
 		g = realloc(g, alloc * sizeof(*g));
 	}
 
-	extend(cinv, times, mtime, size);
+	extend(cinv, times, time, size);
 	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	real_t mval = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
-	*mpos = mval + lindrift * mtime + fracdrift * pow(mtime, 2*hurst);
+	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
+	*pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
 
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
@@ -183,7 +183,7 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 		return false;
 
 	real_t mtime = (ltime + rtime)/2, mpos;
-	bisect(&mpos, mtime, level);
+	sample(&mpos, mtime, level);
 	strip *= stripfac;
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
 	       visitfpt(fpt, mtime, mpos, rtime, rpos, level-1, strip);
