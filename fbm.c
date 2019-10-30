@@ -114,10 +114,12 @@ static void printmat(real_t *mat, size_t size) { /* FIXME debugging only */
 
 typedef enum {
 	TVARIANCE = 1,
+	TBISECTS = 2,
 } tflag_t;
 
 static struct {tflag_t flag; char const *name;} tflags[] = {
 	{TVARIANCE, "variance"},
+	{TBISECTS, "bisects"},
 };
 
 static tflag_t trace = 0;
@@ -126,6 +128,7 @@ static real_t stripfac;
 static gsl_rng *rng;
 static size_t size, alloc;
 static real_t *cinv, *times, *values, *gamma_, *g;
+static unsigned *bisects;
 
 static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
                    size_t size) {
@@ -174,6 +177,8 @@ bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime, real_t rpos,
 	       mpos = mval + lindrift * mtime + fracdrift * pow(mtime, 2*hurst);
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
+	if slower(trace & TBISECTS)
+		bisects[level-1]++;
 
 	strip *= stripfac;
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
@@ -275,6 +280,9 @@ int main(int argc, char **argv) {
 	fftwr_plan noiseplan = fftwr_plan_r2r_1d(2*n, noise, noise,
 	                                         FFTW_HC2R, FFTW_ESTIMATE);
 
+	if (trace & TBISECTS)
+		bisects = malloc(levels * sizeof(*bisects));
+
 	for (unsigned iter = 0; iter < iters; iter++) {
 		/* Generate noise */
 
@@ -309,6 +317,8 @@ int main(int argc, char **argv) {
 
 		/* Find first passage */
 
+		if slower(trace & TBISECTS)
+			memset(bisects, 0, levels * sizeof(*bisects));
 		real_t fpt = 1.0, prevtime = 0.0, prevpos = 0.0;
 		for (unsigned i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
@@ -320,18 +330,27 @@ int main(int argc, char **argv) {
 			prevtime = time;
 			prevpos  = pos;
 		}
+		if slower(trace & TBISECTS) {
+			printf("# bisects");
+			for (unsigned i = levels; i > 0; i--)
+				printf(" %u", bisects[i-1]);
+			printf("\n");
+		}
 		printf("%g\n", (double)fpt);
 	}
 
-	fftwr_free(noise); fftwr_destroy_plan(noiseplan);
+	if (trace & TBISECTS)
+		free(bisects);
 
-	free(cinv); free(times); free(values); free(gamma_); free(g);
+	fftwr_free(noise); fftwr_destroy_plan(noiseplan);
 
 	if faster(levels > 0) {
 		for (unsigned i = 0; i < n; i++)
 			free(cinvs[i]);
 		free(cinvs);
 	}
+
+	free(cinv); free(times); free(values); free(gamma_); free(g);
 
 	fftwr_free(eigen);
 
