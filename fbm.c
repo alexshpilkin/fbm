@@ -219,7 +219,7 @@ int main(int argc, char **argv) {
 	unsigned iters = 0, levels = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "b:g:h:m:n:t:G:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "b:g:h:m:n:t:E:G:I:S:")) != -1) {
 		switch (c) {
 #ifdef DO_FPT
 		case 'b': barrier = atof(optarg); break;
