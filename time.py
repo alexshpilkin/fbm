@@ -68,6 +68,8 @@ if __name__ == '__main__':
 		plottimes(stdin)
 	if len(argv) > 2:
 		plt.legend()
+	plt.xlim(left=0)
+	plt.ylim(bottom=0)
 	plt.xlabel("$y$")
 	plt.ylabel("$P$")
 	plt.show()

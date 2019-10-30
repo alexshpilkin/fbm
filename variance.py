@@ -48,6 +48,7 @@ if __name__ == '__main__':
 		plotvariances(stdin)
 	if len(argv) > 2:
 		plt.legend()
+	plt.xlim(left=0)
 	plt.xlabel("$\\ell$")
 	plt.ylabel("$\\langle\\sigma^2\\rangle / 2^{-2\\ell H}(2^{1-2H}-1/2)$")
 	plt.show()
