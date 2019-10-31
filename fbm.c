@@ -94,22 +94,6 @@ static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 	}
 }
 
-static void printvec(real_t *vec, size_t size) { /* FIXME debugging only */
-	printf("[ ");
-	for (size_t row = 0; row < size; row++)
-		printf("% .4f ", (double)*vec++);
-	printf("]^T\n");
-}
-
-static void printmat(real_t *mat, size_t size) { /* FIXME debugging only */
-	for (size_t row = 0; row < size; row++) {
-		printf("[ ");
-		for (size_t col = 0; col <= row; col++)
-			printf("% .4f ", (double)*mat++);
-		printf("]\n");
-	}
-}
-
 typedef enum {
 	TVARIANCE = 1,
 	TBISECTS = 2,
