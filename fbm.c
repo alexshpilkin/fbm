@@ -104,16 +104,32 @@ static struct {tflag_t flag; char const *name;} tflags[] = {
 	{TBISECTS, "bisects"},
 };
 
+typedef struct {
+	real_t ltime, lpos, rtime, rpos;
+} bridge_t;
+
 static tflag_t trace = 0;
 static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9,
               stripfac;
 #ifdef DO_FPT
 static real_t barrier = 1.0;
 #endif
+static bridge_t *bridges;
 static gsl_rng *rng;
 static size_t size, alloc;
 static real_t *cinv, *times, *values, *gamma_, *g;
 static unsigned *bisects;
+
+#ifdef DO_MAX
+static int cmpbridge(void const *lhs_, void const *rhs_) {
+	bridge_t const *lhs = lhs_, *rhs = rhs_;
+	real_t value = (lhs->lpos + lhs->rpos)/2 - (rhs->lpos + rhs->rpos)/2;
+	/* Sort from greater to smaller values */
+	if (value > 0.0) return -1;
+	if (value < 0.0) return  1;
+	return 0;
+}
+#endif
 
 static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
                    size_t size) {
@@ -192,8 +208,13 @@ static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
 	real_t mtime = (ltime + rtime)/2, mpos;
 	sample(&mpos, mtime, level);
 	strip *= stripfac;
-	visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
-	visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
+	if (lpos > rpos) {
+		visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
+		visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
+	} else {
+		visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
+		visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
+	}
 }
 #endif /* DO_MAX */
 
@@ -228,6 +249,7 @@ int main(int argc, char **argv) {
 
 	size_t n = (size_t)1 << logn;
 	real_t dt = 1.0 / (real_t)n;
+	bridges = malloc(n * sizeof(*bridges));
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
 	               powr(dt, hurst);
 	stripfac = powr(2, -hurst);
@@ -343,29 +365,42 @@ int main(int argc, char **argv) {
 		if slower(trace & TBISECTS)
 			memset(bisects, 0, levels * sizeof(*bisects));
 
-#ifdef DO_FPT
-		real_t fpt = 1.0;
-#endif /* DO_FPT */
-#ifdef DO_MAX
-		real_t max = 0.0;
-#endif /* DO_MAX */
 		real_t prevtime = 0.0, prevpos = 0.0;
 		for (size_t i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
 			       pos = values[i] + lindrift * (i+1)*dt +
 			             fracdrift * powr((i+1)*dt, 2*hurst);
+			bridges[i].ltime = prevtime;
+			bridges[i].lpos  = prevpos;
+			bridges[i].rtime = time;
+			bridges[i].rpos  = pos;
+			prevtime = time;
+			prevpos  = pos;
+		}
+
 #ifdef DO_FPT
-			if (visitfpt(&fpt, prevtime, prevpos, time, pos,
+		real_t fpt = 1.0;
+#endif /* DO_FPT */
+#ifdef DO_MAX
+		real_t max = 0.0;
+		qsort(bridges, n, sizeof(*bridges), cmpbridge);
+#endif /* DO_MAX */
+		for (size_t i = 0; i < n; i++) {
+#ifdef DO_FPT
+			if (visitfpt(&fpt,
+			             bridges[i].ltime, bridges[i].lpos,
+			             bridges[i].rtime, bridges[i].rpos,
 			             levels, strip))
 				break;
 #endif /* DO_FPT */
 #ifdef DO_MAX
-			visitmax(&max, prevtime, prevpos, time, pos, levels,
-			         strip);
+			visitmax(&max,
+			         bridges[i].ltime, bridges[i].lpos,
+			         bridges[i].rtime, bridges[i].rpos,
+			         levels, strip);
 #endif /* DO_MAX */
-			prevtime = time;
-			prevpos  = pos;
 		}
+
 		if slower(trace & TBISECTS) {
 			printf("# bisects");
 			for (unsigned i = levels; i > 0; i--)
@@ -395,7 +430,10 @@ int main(int argc, char **argv) {
 
 	fftwr_free(eigen);
 
-	fftwr_cleanup();
 	gsl_rng_free(rng);
+
+	free(bridges);
+
+	fftwr_cleanup();
 	return EXIT_SUCCESS;
 }
