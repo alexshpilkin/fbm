@@ -32,7 +32,7 @@ def readvariances(file):
 	mean = np.fromiter(map(np.mean, values), float, levels)
 	std = np.fromiter(map(np.std, values), float, levels)
 
-	return level, mean/brown, std/np.sqrt(length)/brown
+	return level, mean/brown, std/brown
 
 def plotvariances(file, label=None):
 	x, y, yerr = readvariances(file)
