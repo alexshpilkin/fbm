@@ -121,10 +121,10 @@ static real_t *cinv, *times, *values, *gamma_, *g;
 static unsigned *bisects;
 
 #ifdef DO_MAX
-static int cmpbridge(void const *lhs_, void const *rhs_) {
+static int compare(void const *lhs_, void const *rhs_) {
 	bridge_t const *lhs = lhs_, *rhs = rhs_;
 	real_t value = (lhs->lpos + lhs->rpos)/2 - (rhs->lpos + rhs->rpos)/2;
-	/* Sort from greater to smaller values */
+	/* Sort from larger to smaller midpoints */
 	if (value > 0.0) return -1;
 	if (value < 0.0) return  1;
 	return 0;
@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
 #endif /* DO_FPT */
 #ifdef DO_MAX
 		real_t max = 0.0;
-		qsort(bridges, n, sizeof(*bridges), cmpbridge);
+		qsort(bridges, n, sizeof(*bridges), compare);
 #endif /* DO_MAX */
 		for (size_t i = 0; i < n; i++) {
 #ifdef DO_FPT
