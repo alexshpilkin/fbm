@@ -6,9 +6,7 @@ from mpmath import fp
 from scipy.special import erfi
 
 def hyp2f2(a, b, c, d, zs):
-	zs = np.asarray(zs, float)
-	count, = zs.shape
-	return np.fromiter((fp.hyp2f2(a, b, c, d, z) for z in zs), float, count)
+	return np.vectorize(lambda z: fp.hyp2f2(a, b, c, d, z))(zs)
 
 def eye(z):
 	z = np.asarray(z, float)
