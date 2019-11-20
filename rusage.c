@@ -26,9 +26,9 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	getrusage(RUSAGE_CHILDREN, &ru);
-	fprintf(stderr, "# usage %li.%.6li %li\n",
-	        (long)ru.ru_utime.tv_sec,
-	        (long)ru.ru_utime.tv_usec,
-	        ru.ru_maxrss);
+	printf("# usage %li.%.6li %li\n",
+	       (long)ru.ru_utime.tv_sec,
+	       (long)ru.ru_utime.tv_usec,
+	       ru.ru_maxrss);
 	return WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE;
 }
