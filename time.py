@@ -34,12 +34,12 @@ def readheaders(file):
 def readtimes(file):
 	h = readheaders(file)
 	hurst = float(h['Hurst parameter'])
-	BARRIER = 0.1
+	barrier = float(h['Barrier height'])
 
 	data = []
 	for line in file:
 		if line.startswith('#'): continue
-		data.append(BARRIER / np.sqrt(2) / float(line)**hurst)
+		data.append(barrier / np.sqrt(2) / float(line)**hurst)
 
 	nhist, bins = np.histogram(data, 50, density=True)
 	uhist, _    = np.histogram(data, 50)
