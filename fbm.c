@@ -123,7 +123,7 @@ static unsigned *bisects;
 #ifdef DO_MAX
 static int compare(void const *lhs_, void const *rhs_) {
 	bridge_t const *lhs = lhs_, *rhs = rhs_;
-	real_t value = (lhs->lpos + lhs->rpos)/2 - (rhs->lpos + rhs->rpos)/2;
+	real_t value = MAX(lhs->lpos, lhs->rpos) - MAX(rhs->lpos, rhs->rpos);
 	/* Sort from larger to smaller midpoints */
 	if (value > 0.0) return -1;
 	if (value < 0.0) return  1;
