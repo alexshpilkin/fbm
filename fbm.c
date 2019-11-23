@@ -197,15 +197,13 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 #ifdef DO_MAX
 static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
                      real_t rpos, unsigned level, real_t strip) {
-	if (level == 0) {
-		/* Checking both ends is an optimization */
-		if (lpos > *max)
-			*max = lpos;
-		if (rpos > *max)
-			*max = rpos;
-		return;
-	}
 	if (MAX(lpos, rpos) < *max - strip)
+		return;
+	if (lpos > *max)
+		*max = lpos;
+	if (rpos > *max)
+		*max = rpos;
+	if (level == 0)
 		return;
 
 	real_t mtime = (ltime + rtime)/2, mpos;
