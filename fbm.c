@@ -150,7 +150,7 @@ static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
 }
 
-static void sample(real_t *restrict pos, real_t time, unsigned level) {
+static real_t sample(real_t time, unsigned level) {
 	assert(level > 0);
 
 	if (size + 1 > reserved) {
@@ -165,13 +165,14 @@ static void sample(real_t *restrict pos, real_t time, unsigned level) {
 	extend(cinv, times, time, size);
 	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
-	*pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
+	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)),
+	       pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
 
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
 	if slower(trace & TBISECTS)
 		bisects[level-1]++;
+	return pos;
 }
 
 #ifdef DO_FPT
@@ -186,8 +187,7 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 	if (MAX(lpos, rpos) < barrier - strip)
 		return false;
 
-	real_t mtime = (ltime + rtime)/2, mpos;
-	sample(&mpos, mtime, level);
+	real_t mtime = (ltime + rtime)/2, mpos = sample(mtime, level);
 	strip *= stripfac;
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
 	       visitfpt(fpt, mtime, mpos, rtime, rpos, level-1, strip);
@@ -206,8 +206,7 @@ static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
 	if (level == 0)
 		return;
 
-	real_t mtime = (ltime + rtime)/2, mpos;
-	sample(&mpos, mtime, level);
+	real_t mtime = (ltime + rtime)/2, mpos = sample(mtime, level);
 	strip *= stripfac;
 	if (lpos > rpos) {
 		visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
