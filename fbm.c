@@ -116,7 +116,7 @@ static real_t barrier = 1.0;
 #endif
 static bridge_t *bridges;
 static gsl_rng *rng;
-static size_t size, alloc;
+static size_t size, reserved;
 static real_t *cinv, *times, *values, *gamma_, *g;
 static unsigned *bisects;
 
@@ -153,13 +153,13 @@ static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
 static void sample(real_t *restrict pos, real_t time, unsigned level) {
 	assert(level > 0);
 
-	if (size + 1 > alloc) {
-		alloc *= 2;
-		cinv = realloc(cinv, alloc*(alloc+1)/2 * sizeof(*cinv));
-		times = realloc(times, alloc * sizeof(*times));
-		values = realloc(values, alloc * sizeof(*values));
-		gamma_ = realloc(gamma_, alloc * sizeof(*gamma_));
-		g = realloc(g, alloc * sizeof(*g));
+	if (size + 1 > reserved) {
+		reserved *= 2;
+		cinv = realloc(cinv, reserved*(reserved+1)/2 * sizeof(*cinv));
+		times = realloc(times, reserved * sizeof(*times));
+		values = realloc(values, reserved * sizeof(*values));
+		gamma_ = realloc(gamma_, reserved * sizeof(*gamma_));
+		g = realloc(g, reserved * sizeof(*g));
 	}
 
 	extend(cinv, times, time, size);
@@ -298,7 +298,7 @@ int main(int argc, char **argv) {
 
 	/* Compute inverse correlation matrices */
 
-	alloc = n;
+	reserved = n;
 	cinv = malloc(n*(n+1)/2 * sizeof(*cinv));
 	times = malloc(n * sizeof(*times));
 	values = malloc(n * sizeof(*values));
