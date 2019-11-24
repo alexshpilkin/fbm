@@ -219,12 +219,12 @@ static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
 #endif /* DO_MAX */
 
 int main(int argc, char **argv) {
-	unsigned logn = 8;
+	unsigned logn = 8, levels = 0, iters = 0;
+	bool reseed = false;
 	unsigned long seed = 0;
-	unsigned iters = 0, levels = 0;
 
 	int c;
-	while ((c = getopt(argc, argv, "b:g:h:m:n:t:E:G:I:S:")) != -1) {
+	while ((c = getopt(argc, argv, "b:g:h:m:n:t:E:G:I:RS:")) != -1) {
 		switch (c) {
 #ifdef DO_FPT
 		case 'b': barrier = atof(optarg); break;
@@ -236,6 +236,7 @@ int main(int argc, char **argv) {
 		case 'E': epsilon = atof(optarg); break;
 		case 'G': levels = atoi(optarg); break;
 		case 'I': iters = atoi(optarg); break;
+		case 'R': reseed = true; break;
 		case 'S': seed = atol(optarg); break;
 
 		case 't':
@@ -255,8 +256,14 @@ int main(int argc, char **argv) {
 	stripfac = powr(2, -hurst);
 
 	gsl_rng_env_setup();
+	gsl_rng *seedrng;
 	rng = gsl_rng_alloc(gsl_rng_default);
-	gsl_rng_set(rng, seed);
+	if (reseed) {
+		seedrng = gsl_rng_alloc(gsl_rng_default);
+		gsl_rng_set(seedrng, seed);
+	} else {
+		gsl_rng_set(rng, seed);
+	}
 
 	printf("# Hurst parameter: %.17e\n"
 	       "# Linear drift: %.17e\n"
@@ -327,6 +334,11 @@ int main(int argc, char **argv) {
 		bisects = malloc(levels * sizeof(*bisects));
 
 	for (unsigned iter = 0; iter < iters; iter++) {
+		/* Reseed */
+
+		if (reseed)
+			gsl_rng_set(rng, gsl_rng_get(seedrng));
+
 		/* Generate noise */
 
 		gsl_ran_gaussian_ziggurat(rng, 1.0); /* FIXME Sync with  */
@@ -431,6 +443,8 @@ int main(int argc, char **argv) {
 	fftwr_free(eigen);
 
 	gsl_rng_free(rng);
+	if (reseed)
+		gsl_rng_free(seedrng);
 
 	free(bridges);
 
