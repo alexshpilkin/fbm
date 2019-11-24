@@ -113,11 +113,14 @@ static real_t hurst = 0.5, lindrift = 0.0, fracdrift = 0.0, epsilon = 1e-9,
               stripfac;
 #ifdef DO_FPT
 static real_t barrier = 1.0;
-#endif
-static bridge_t *bridges;
+#endif /* DO_FPT */
 static gsl_rng *rng;
 static size_t size, reserved;
 static real_t *cinv, *times, *values, *gamma_, *g;
+#ifdef DO_MAX
+static bridge_t *queue;
+static size_t top;
+#endif /* DO_MAX */
 static unsigned *bisects;
 
 #ifdef DO_MAX
@@ -160,6 +163,9 @@ static real_t sample(real_t time, unsigned level) {
 		values = realloc(values, reserved * sizeof(*values));
 		gamma_ = realloc(gamma_, reserved * sizeof(*gamma_));
 		g = realloc(g, reserved * sizeof(*g));
+#ifdef DO_MAX
+		queue = realloc(queue, 2*reserved * sizeof(*queue));
+#endif /* DO_MAX */
 	}
 
 	extend(cinv, times, time, size);
@@ -207,14 +213,11 @@ static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
 		return;
 
 	real_t mtime = (ltime + rtime)/2, mpos = sample(mtime, level);
-	strip *= stripfac;
-	if (lpos > rpos) {
-		visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
-		visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
-	} else {
-		visitmax(max, mtime, mpos, rtime, rpos, level-1, strip);
-		visitmax(max, ltime, lpos, mtime, mpos, level-1, strip);
-	}
+	bridge_t left  = {ltime, lpos, mtime, mpos},
+	         right = {mtime, mpos, rtime, rpos};
+	assert(top + 2 <= 2 * size);
+	queue[top++] = left;
+	queue[top++] = right;
 }
 #endif /* DO_MAX */
 
@@ -250,7 +253,6 @@ int main(int argc, char **argv) {
 
 	size_t n = (size_t)1 << logn;
 	real_t dt = 1.0 / (real_t)n;
-	bridges = malloc(n * sizeof(*bridges));
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
 	               powr(dt, hurst);
 	stripfac = powr(2, -hurst);
@@ -310,6 +312,9 @@ int main(int argc, char **argv) {
 	values = malloc(n * sizeof(*values));
 	gamma_ = malloc(n * sizeof(*gamma_));
 	g = malloc(n * sizeof(*g));
+#ifdef DO_MAX
+	queue = malloc(2*n * sizeof(*queue));
+#endif /* DO_MAX */
 
 	real_t **cinvs = NULL;
 	if faster(levels > 0) {
@@ -377,41 +382,48 @@ int main(int argc, char **argv) {
 		if slower(trace & TBISECTS)
 			memset(bisects, 0, levels * sizeof(*bisects));
 
+#ifdef DO_FPT
+		real_t fpt = 1.0;
+#endif /* DO_FPT */
 		real_t prevtime = 0.0, prevpos = 0.0;
 		for (size_t i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
 			       pos = values[i] + lindrift * (i+1)*dt +
 			             fracdrift * powr((i+1)*dt, 2*hurst);
-			bridges[i].ltime = prevtime;
-			bridges[i].lpos  = prevpos;
-			bridges[i].rtime = time;
-			bridges[i].rpos  = pos;
-			prevtime = time;
-			prevpos  = pos;
-		}
-
 #ifdef DO_FPT
-		real_t fpt = 1.0;
-#endif /* DO_FPT */
-#ifdef DO_MAX
-		real_t max = 0.0;
-		qsort(bridges, n, sizeof(*bridges), compare);
-#endif /* DO_MAX */
-		for (size_t i = 0; i < n; i++) {
-#ifdef DO_FPT
-			if (visitfpt(&fpt,
-			             bridges[i].ltime, bridges[i].lpos,
-			             bridges[i].rtime, bridges[i].rpos,
+			if (visitfpt(&fpt, prevtime, prevpos, time, pos,
 			             levels, strip))
 				break;
 #endif /* DO_FPT */
 #ifdef DO_MAX
-			visitmax(&max,
-			         bridges[i].ltime, bridges[i].lpos,
-			         bridges[i].rtime, bridges[i].rpos,
-			         levels, strip);
+			queue[i].ltime = prevtime;
+			queue[i].lpos  = prevpos;
+			queue[i].rtime = time;
+			queue[i].rpos  = pos;
 #endif /* DO_MAX */
+			prevtime = time;
+			prevpos  = pos;
 		}
+
+#ifdef DO_MAX
+		real_t max = 0.0;
+		size_t bottom = 0;
+		top = size;
+		real_t levelstrip = strip;
+		for (unsigned level = levels+1; level > 0; level--) {
+			size_t prevtop = top;
+			qsort(queue + bottom, prevtop - bottom, sizeof(*queue),
+			      compare);
+			for (size_t i = bottom; i < prevtop; i++) {
+				visitmax(&max,
+				         queue[i].ltime, queue[i].lpos,
+				         queue[i].rtime, queue[i].rpos,
+				         level-1, levelstrip);
+			}
+			bottom = prevtop;
+			levelstrip *= stripfac;
+		}
+#endif /* DO_MAX */
 
 		if slower(trace & TBISECTS) {
 			printf("# bisects");
@@ -439,14 +451,15 @@ int main(int argc, char **argv) {
 	}
 
 	free(cinv); free(times); free(values); free(gamma_); free(g);
+#ifdef DO_MAX
+	free(queue);
+#endif /* DO_MAX */
 
 	fftwr_free(eigen);
 
 	gsl_rng_free(rng);
 	if (reseed)
 		gsl_rng_free(seedrng);
-
-	free(bridges);
 
 	fftwr_cleanup();
 	return EXIT_SUCCESS;
