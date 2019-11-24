@@ -124,7 +124,7 @@ static unsigned *bisects;
 static int compare(void const *lhs_, void const *rhs_) {
 	bridge_t const *lhs = lhs_, *rhs = rhs_;
 	real_t value = MAX(lhs->lpos, lhs->rpos) - MAX(rhs->lpos, rhs->rpos);
-	/* Sort from larger to smaller midpoints */
+	/* Sort from larger to smaller maxima */
 	if (value > 0.0) return -1;
 	if (value < 0.0) return  1;
 	return 0;
