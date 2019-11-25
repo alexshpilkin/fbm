@@ -18,7 +18,7 @@ def f1(y):
 	y = np.asarray(y, float)
 	return eye(y) + y*y * (np.log(2 * y*y) + np.euler_gamma) - 2.0
 
-def fptprob(hurst, y):
+def maxprob(hurst, y):
 	y = np.asarray(y, float)
 	return (np.power(y, 1.0/hurst - 2) / (np.sqrt(2*np.pi) * hurst) *
 	        np.exp(-y*y/2 + (hurst-0.5) * (f1(y) - 2*(np.euler_gamma + np.log(2)))))
@@ -32,28 +32,28 @@ def readheaders(file):
 		headers[name.strip()] = value.strip()
 	return headers
 
-def readtimes(file):
+def readpositions(file):
 	h = readheaders(file)
 	hurst = float(h['Hurst parameter'])
-	barrier = float(h['Barrier height'])
+	TIME = 1.0
 
 	data = []
 	for line in file:
 		if line.startswith('#'): continue
-		data.append(barrier / np.sqrt(2) / float(line)**hurst)
+		data.append(float(line) / np.sqrt(2) / TIME**hurst)
 
 	nhist, bins = np.histogram(data, 50, density=True)
 	uhist, _    = np.histogram(data, 50)
 	y = (bins[:-1] + bins[1:])/2
-	pth = fptprob(hurst, y)
+	pth = maxprob(hurst, y)
 
 	yy = np.arange(0.005, 8, 0.005)
-	pth /= np.trapz(fptprob(hurst, yy), yy)
+	pth /= np.trapz(maxprob(hurst, yy), yy)
 
 	return y[1:], nhist[1:], (nhist / np.sqrt(uhist))[1:], pth[1:]
 
-def plottimes(file, label=None):
-	y, p, perr, pth = readtimes(file)
+def plotpositions(file, label=None):
+	y, p, perr, pth = readpositions(file)
 	line, = plt.plot(y, pth, label=label)
 	plt.errorbar(y, p, perr, fmt='.', color=line.get_color())
 
@@ -62,9 +62,9 @@ if __name__ == '__main__':
 
 	for name in argv[1:]:
 		with open(name, 'r') as file:
-			plottimes(file, label=name)
+			plotpositions(file, label=name)
 	if len(argv) == 1:
-		plottimes(stdin)
+		plotpositions(stdin)
 	if len(argv) > 2:
 		plt.legend()
 	plt.xlim(left=0)
