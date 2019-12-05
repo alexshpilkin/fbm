@@ -34,6 +34,7 @@ def readheaders(file):
 
 def readpositions(file):
 	h = readheaders(file)
+	assert h.get('Program', 'max').startswith('max')
 	hurst = float(h['Hurst parameter'])
 	TIME = 1.0
 

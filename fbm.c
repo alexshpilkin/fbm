@@ -267,7 +267,8 @@ int main(int argc, char **argv) {
 		gsl_rng_set(rng, seed);
 	}
 
-	printf("# Hurst parameter: %.17e\n"
+	printf("# Program: %s\n"
+	       "# Hurst parameter: %.17e\n"
 	       "# Linear drift: %.17e\n"
 	       "# Fractional drift: %.17e\n"
 #ifdef DO_FPT
@@ -278,12 +279,20 @@ int main(int argc, char **argv) {
 	       "# Error tolerance: %.17e\n"
 	       "# Iterations: %u\n"
 	       "# RNG seed: %lu\n"
+	       "# Reseeding: %s\n"
 	       "#\n",
+#ifdef DO_FPT
+	       "fpt",
+#endif
+#ifdef DO_MAX
+	       "max",
+#endif
 	       (double)hurst, (double)lindrift, (double)fracdrift,
 #ifdef DO_FPT
 	       (double)barrier,
 #endif /* DO_FPT */
-	       logn, levels, (double)epsilon, iters, seed);
+	       logn, levels, (double)epsilon, iters, seed,
+	       reseed ? "yes" : "no");
 
 	/* Compute circulant eigenvalues */
 

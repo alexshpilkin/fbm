@@ -34,6 +34,7 @@ def readheaders(file):
 
 def readtimes(file):
 	h = readheaders(file)
+	assert h.get('Program', 'fpt').startswith('fpt')
 	hurst = float(h['Hurst parameter'])
 	barrier = float(h['Barrier height'])
 
