@@ -60,6 +60,7 @@ static real_t erfcinv(real_t x) {
 	return sqrtr(eta - 0.5*logeta + (0.25*logeta - 0.5)/eta);
 }
 
+#ifndef DO_PHONEBOOK
 static real_t inner(real_t const *vec1, real_t const *vec2, size_t size) {
 	real_t sum = 0.0;
 	for (size_t i = 0; i < size; i++)
@@ -93,14 +94,19 @@ static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 		out[i] = sum;
 	}
 }
+#endif
 
 typedef enum {
+#ifndef DO_PHONEBOOK
 	TVARIANCE = 1,
+#endif
 	TBISECTS = 2,
 } tflag_t;
 
 static struct {tflag_t flag; char const *name;} tflags[] = {
+#ifndef DO_PHONEBOOK
 	{TVARIANCE, "variance"},
+#endif
 	{TBISECTS, "bisects"},
 };
 
@@ -116,7 +122,14 @@ static real_t barrier = 1.0;
 #endif /* DO_FPT */
 static gsl_rng *rng;
 static size_t size, reserved;
-static real_t *cinv, *times, *values, *gamma_, *g;
+#ifdef DO_PHONEBOOK
+static real_t *pbtimes, *pbvalues;
+#else /* ifndef DO_PHONEBOOK */
+#define pbtimes times
+#define pbvalues values
+static real_t *cinv, *gamma_, *g;
+#endif
+static real_t *times, *values;
 #ifdef DO_MAX
 static bridge_t *queue;
 static size_t top;
@@ -134,6 +147,7 @@ static int compare(void const *lhs_, void const *rhs_) {
 }
 #endif
 
+#ifndef DO_PHONEBOOK
 static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
                    size_t size) {
 	times[size] = time;
@@ -152,30 +166,45 @@ static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
 	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
 }
+#endif
 
 static real_t sample(real_t time, unsigned level) {
 	assert(level > 0);
 
 	if (size + 1 > reserved) {
 		reserved *= 2;
+#ifndef DO_PHONEBOOK
 		cinv = realloc(cinv, reserved*(reserved+1)/2 * sizeof(*cinv));
-		times = realloc(times, reserved * sizeof(*times));
-		values = realloc(values, reserved * sizeof(*values));
 		gamma_ = realloc(gamma_, reserved * sizeof(*gamma_));
 		g = realloc(g, reserved * sizeof(*g));
+#endif
+		times = realloc(times, reserved * sizeof(*times));
+		values = realloc(values, reserved * sizeof(*values));
 #ifdef DO_MAX
 		queue = realloc(queue, 2*reserved * sizeof(*queue));
 #endif /* DO_MAX */
 	}
 
+#ifdef DO_PHONEBOOK
+	size_t i;
+	times[size] = time;
+	for (i = 0; /* true */; i++) {
+		if (pbtimes[i] == time) break;
+		assert(pbtimes[i] < time);
+	}
+	real_t value = values[size++] = pbvalues[i];
+#else /* ifndef DO_PHONEBOOK */
 	extend(cinv, times, time, size);
 	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)),
-	       pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
+	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
+#endif
+	real_t pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
 
+#ifndef DO_PHONEBOOK
 	if slower(trace & TVARIANCE)
 		printf("# variance %u %g\n", level, (double)var);
+#endif
 	if slower(trace & TBISECTS)
 		bisects[level-1]++;
 	return pos;
@@ -251,6 +280,13 @@ int main(int argc, char **argv) {
 		}
 	}
 
+#ifdef DO_PHONEBOOK
+	size_t pbn = (size_t)1 << (logn + levels);
+	real_t pbdt = 1.0 / (real_t)pbn;
+#else /* ifndef DO_PHONEBOOK */
+#define pbn n
+#define pbdt dt
+#endif
 	size_t n = (size_t)1 << logn;
 	real_t dt = 1.0 / (real_t)n;
 	real_t strip = erfcinv(2*epsilon) * sqrtr(4 / powr(2, 2*hurst) - 1) *
@@ -282,12 +318,15 @@ int main(int argc, char **argv) {
 	       "# Reseeding: %s\n"
 	       "#\n",
 #ifdef DO_FPT
-	       "fpt",
+	       "fpt"
 #endif
 #ifdef DO_MAX
-	       "max",
+	       "max"
 #endif
-	       (double)hurst, (double)lindrift, (double)fracdrift,
+#ifdef DO_PHONEBOOK
+	       "-pb"
+#endif
+	       , (double)hurst, (double)lindrift, (double)fracdrift,
 #ifdef DO_FPT
 	       (double)barrier,
 #endif /* DO_FPT */
@@ -296,19 +335,19 @@ int main(int argc, char **argv) {
 
 	/* Compute circulant eigenvalues */
 
-	real_t *eigen = fftwr_alloc_real(n + 1);
+	real_t *eigen = fftwr_alloc_real(pbn + 1);
 	real_t prevexp, currexp, nextexp;
-	currexp = pow(1.0 / n, 2 * hurst);
+	currexp = pow(1.0 / pbn, 2 * hurst);
 	nextexp = 0.0;
-	for (size_t i = 0; i < n; i++) {
+	for (size_t i = 0; i < pbn; i++) {
 		prevexp = currexp;
 		currexp = nextexp;
-		nextexp = powr((real_t)(i+1) / (real_t)n, 2*hurst);
+		nextexp = powr((real_t)(i+1) / (real_t)pbn, 2*hurst);
 		eigen[i] = prevexp + nextexp - 2.0*currexp;
 	}
-	eigen[n] = 0.0;
+	eigen[pbn] = 0.0;
 
-	fftwr_plan eigenplan = fftwr_plan_r2r_1d(n + 1, eigen, eigen,
+	fftwr_plan eigenplan = fftwr_plan_r2r_1d(pbn + 1, eigen, eigen,
 	                                         FFTW_REDFT00, FFTW_ESTIMATE);
 	fftwr_execute(eigenplan);
 	fftwr_destroy_plan(eigenplan);
@@ -316,15 +355,21 @@ int main(int argc, char **argv) {
 	/* Compute inverse correlation matrices */
 
 	reserved = n;
+#ifdef DO_PHONEBOOK
+	pbtimes = malloc(pbn * sizeof(*pbtimes));
+	pbvalues = malloc(pbn * sizeof(*pbvalues));
+#else /* ifndef DO_PHONEBOOK */
 	cinv = malloc(n*(n+1)/2 * sizeof(*cinv));
-	times = malloc(n * sizeof(*times));
-	values = malloc(n * sizeof(*values));
 	gamma_ = malloc(n * sizeof(*gamma_));
 	g = malloc(n * sizeof(*g));
+#endif
+	times = malloc(n * sizeof(*times));
+	values = malloc(n * sizeof(*values));
 #ifdef DO_MAX
 	queue = malloc(2*n * sizeof(*queue));
 #endif /* DO_MAX */
 
+#ifndef DO_PHONEBOOK
 	real_t **cinvs = NULL;
 	if faster(levels > 0) {
 		cinvs = malloc(n * sizeof(*cinvs));
@@ -337,11 +382,12 @@ int main(int argc, char **argv) {
 			extend(cinvs[i], times, (i+1)*dt, i);
 		}
 	}
+#endif
 
 	/* Iterate */
 
-	real_t *noise = fftwr_alloc_real(2*n);
-	fftwr_plan noiseplan = fftwr_plan_r2r_1d(2*n, noise, noise,
+	real_t *noise = fftwr_alloc_real(2*pbn);
+	fftwr_plan noiseplan = fftwr_plan_r2r_1d(2*pbn, noise, noise,
 	                                         FFTW_HC2R, FFTW_ESTIMATE);
 
 	if (trace & TBISECTS)
@@ -355,36 +401,44 @@ int main(int argc, char **argv) {
 
 		/* Generate noise */
 
-		gsl_ran_gaussian_ziggurat(rng, 1.0); /* FIXME Sync with  */
-		gsl_ran_gaussian_ziggurat(rng, 1.0); /* Walter’s version */
-		for (size_t i = 1; i < n; i++) {
-			noise[i] = sqrt(0.25 * eigen[i] / n) *
+		for (size_t i = 1; i < pbn; i++) {
+			noise[i] = sqrt(0.25 * eigen[i] / pbn) *
 			           gsl_ran_gaussian_ziggurat(rng, 1.0);
-			noise[2*n-i] = sqrt(0.25 * eigen[i] / n) *
-			               gsl_ran_gaussian_ziggurat(rng, 1.0);
+			noise[2*pbn-i] = sqrt(0.25 * eigen[i] / pbn) *
+			                 gsl_ran_gaussian_ziggurat(rng, 1.0);
 		}
-		noise[0] = sqrt(0.5 * eigen[0] / n) *
+		noise[0] = sqrt(0.5 * eigen[0] / pbn) *
 		           gsl_ran_gaussian_ziggurat(rng, 1.0);
-		noise[n] = sqrt(0.5 * eigen[n] / n) *
-		           gsl_ran_gaussian_ziggurat(rng, 1.0);
+		noise[pbn] = sqrt(0.5 * eigen[n] / pbn) *
+		             gsl_ran_gaussian_ziggurat(rng, 1.0);
 		fftwr_execute(noiseplan);
 
 		/* Integrate */
 
-		/* FIXME Kahan summation ? */
 		real_t sum = 0.0;
-		for (size = 0; size < n; size++) {
+		for (size_t i = 0; i < pbn; i++) {
+			pbtimes[i] = (i + 1) * pbdt;
+			pbvalues[i] = sum += noise[i];
+		}
+#ifdef DO_PHONEBOOK
+		for (size_t i = 0; i < n; i++) {
+			size_t j = (1 << levels) * (i+1) - 1;
+			times[i] = pbtimes[j];
+			values[i] = pbvalues[j];
+		}
+#endif
+		for (size = 1; size < n; size++) {
 #ifdef DO_FPT
-			if (sum + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= barrier)
+			if (values[size-1] + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= barrier)
 				break;
 #endif /* DO_FPT */
-			times[size] = (size + 1) * dt;
-			values[size] = sum += noise[size];
 		}
+#ifndef DO_PHONEBOOK
 		if faster(levels > 0) {
 			memcpy(cinv, cinvs[size-1],
 			       size*(size+1)/2 * sizeof(*cinv));
 		}
+#endif
 
 		/* Find first passage or maximum */
 
@@ -397,8 +451,8 @@ int main(int argc, char **argv) {
 		real_t prevtime = 0.0, prevpos = 0.0;
 		for (size_t i = 0; i < n; i++) {
 			real_t time = (i + 1) * dt,
-			       pos = values[i] + lindrift * (i+1)*dt +
-			             fracdrift * powr((i+1)*dt, 2*hurst);
+			       pos = values[i] + lindrift * time +
+			             fracdrift * powr(time, 2*hurst);
 #ifdef DO_FPT
 			if (visitfpt(&fpt, prevtime, prevpos, time, pos,
 			             levels, strip))
@@ -440,11 +494,52 @@ int main(int argc, char **argv) {
 				printf(" %u", bisects[i-1]);
 			printf("\n");
 		}
+
+#ifdef DO_PHONEBOOK
 #ifdef DO_FPT
-		printf("%g\n", (double)fpt);
+		real_t pbfpt = 1.0;
+		prevtime = 0.0; prevpos = 0.0;
 #endif /* DO_FPT */
 #ifdef DO_MAX
-		printf("%g\n", (double)max);
+		real_t pbmax = 0.0;
+#endif /* DO_MAX */
+		for (size_t i = 0; i < pbn; i++) {
+			real_t time = (i + 1) * pbdt,
+			       pos = pbvalues[i] + lindrift * time +
+			             fracdrift * powr(time, 2*hurst);
+#ifdef DO_FPT
+			if (pos >= barrier) {
+				pbfpt = prevtime + (time - prevtime) *
+				                   (barrier - prevpos) /
+				                   (pos - prevpos);
+				break;
+			}
+			prevtime = time; prevpos = pos;
+#endif /* DO_FPT */
+#ifdef DO_MAX
+			if (pbmax < pos)
+				pbmax = pos;
+#endif /* DO_MAX */
+		}
+#ifdef DO_FPT
+		if (fpt != pbfpt) {
+			assert(fpt > pbfpt);
+			printf("# deviation %.17e %.17e\n", pbfpt, fpt);
+		}
+#endif /* DO_FPT */
+#ifdef DO_MAX
+		if (max != pbmax) {
+			assert(max < pbmax);
+			printf("# deviation %.17e %.17e\n", pbmax, max);
+		}
+#endif /* DO_MAX */
+#endif
+
+#ifdef DO_FPT
+		printf("%.17e\n", (double)fpt);
+#endif /* DO_FPT */
+#ifdef DO_MAX
+		printf("%.17e\n", (double)max);
 #endif /* DO_MAX */
 	}
 
@@ -453,13 +548,20 @@ int main(int argc, char **argv) {
 
 	fftwr_free(noise); fftwr_destroy_plan(noiseplan);
 
+#ifndef DO_PHONEBOOK
 	if faster(levels > 0) {
 		for (size_t i = 0; i < n; i++)
 			free(cinvs[i]);
 		free(cinvs);
 	}
+#endif
 
-	free(cinv); free(times); free(values); free(gamma_); free(g);
+#ifdef DO_PHONEBOOK
+	free(pbtimes); free(pbvalues);
+#else /* ifndef DO_PHONEBOOK */
+	free(cinv); free(gamma_); free(g);
+#endif
+	free(times); free(values);
 #ifdef DO_MAX
 	free(queue);
 #endif /* DO_MAX */
