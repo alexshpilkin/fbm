@@ -360,6 +360,7 @@ int main(int argc, char **argv) {
 #endif /* DO_FPT */
 	       logn, levels, (double)epsilon, iters, seed,
 	       reseed ? "yes" : "no");
+	fflush(stdout);
 
 	/* Compute circulant eigenvalues */
 
@@ -576,6 +577,7 @@ int main(int argc, char **argv) {
 #ifdef DO_MAX
 		printf("%.17e %.17e\n", (double)maxtime, (double)maxpos);
 #endif /* DO_MAX */
+		fflush(stdout);
 	}
 
 	if (trace & TBISECTS)
