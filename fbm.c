@@ -26,10 +26,12 @@ typedef double real_t;
 #define FFTWR(TOK)  fftw_ ## TOK
 #endif
 
-#define fabsr  REAL(fabs)
-#define logr   REAL(log)
-#define powr   REAL(pow)
-#define sqrtr  REAL(sqrt)
+#define fabsr   REAL(fabs)
+#define log2r   REAL(log2)
+#define logr    REAL(log)
+#define powr    REAL(pow)
+#define lrintr  REAL(lrint)
+#define sqrtr   REAL(sqrt)
 
 #define fftwr_alloc_real    FFTWR(alloc_real)
 #define fftwr_cleanup       FFTWR(cleanup)
@@ -253,6 +255,20 @@ static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
 	queue[top++] = right;
 }
 #endif /* DO_MAX */
+
+#ifdef DO_PHONEBOOK
+static unsigned findlevel(real_t time) {
+	real_t left = 0.0, right = 1.0, pbdt = pbtimes[0];
+	for (size_t i = 0; i < size; i++) {
+		assert(times[i] != time);
+		if (times[i] < time && time - times[i] < time - left)
+			left = times[i];
+		if (times[i] > time && times[i] - time < right - time)
+			right = times[i];
+	}
+	return (unsigned)lrintr(log2r((right - left)/pbdt));
+}
+#endif /* DO_PHONEBOOK */
 
 int main(int argc, char **argv) {
 	unsigned logn = 8, levels = 0, iters = 0;
@@ -530,14 +546,16 @@ int main(int argc, char **argv) {
 #ifdef DO_FPT
 		if (fpt != pbfpt) {
 			assert(fpt > pbfpt);
-			printf("# deviation %.17e %.17e\n", pbfpt, fpt);
+			printf("# error %u %.17e %.17e\n",
+			       findlevel(pbfpt), pbfpt, fpt);
 		}
 #endif /* DO_FPT */
 #ifdef DO_MAX
 		if (maxpos != pbmaxpos) {
 			assert(maxpos < pbmaxpos);
-			printf("# deviation %.17e %.17e %.17e %.17e\n",
-			       pbmaxtime, pbmaxpos, maxtime, maxpos);
+			printf("# error %u %.17e %.17e %.17e %.17e\n",
+			       findlevel(pbmaxtime), pbmaxtime, pbmaxpos,
+			       maxtime, maxpos);
 		}
 #endif /* DO_MAX */
 #endif	
