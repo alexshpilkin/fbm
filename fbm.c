@@ -230,14 +230,18 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 #endif /* DO_FPT */
 
 #ifdef DO_MAX
-static void visitmax(real_t *max, real_t ltime, real_t lpos, real_t rtime,
-                     real_t rpos, unsigned level, real_t strip) {
-	if (MAX(lpos, rpos) < *max - strip)
+static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
+                     real_t rtime, real_t rpos, unsigned level, real_t strip) {
+	if (MAX(lpos, rpos) < *maxpos - strip)
 		return;
-	if (lpos > *max)
-		*max = lpos;
-	if (rpos > *max)
-		*max = rpos;
+	if (lpos > *maxpos) {
+		*maxtime = ltime;
+		*maxpos = lpos;
+	}
+	if (rpos > *maxpos) {
+		*maxtime = rtime;
+		*maxpos = rpos;
+	}
 	if (level == 0)
 		return;
 
@@ -469,7 +473,7 @@ int main(int argc, char **argv) {
 		}
 
 #ifdef DO_MAX
-		real_t max = 0.0;
+		real_t maxtime = 0.0, maxpos = 0.0;
 		size_t bottom = 0;
 		top = size;
 		real_t levelstrip = strip;
@@ -478,7 +482,7 @@ int main(int argc, char **argv) {
 			qsort(queue + bottom, prevtop - bottom, sizeof(*queue),
 			      compare);
 			for (size_t i = bottom; i < prevtop; i++) {
-				visitmax(&max,
+				visitmax(&maxtime, &maxpos,
 				         queue[i].ltime, queue[i].lpos,
 				         queue[i].rtime, queue[i].rpos,
 				         level-1, levelstrip);
@@ -501,7 +505,7 @@ int main(int argc, char **argv) {
 		prevtime = 0.0; prevpos = 0.0;
 #endif /* DO_FPT */
 #ifdef DO_MAX
-		real_t pbmax = 0.0;
+		real_t pbmaxtime = 0.0, pbmaxpos = 0.0;
 #endif /* DO_MAX */
 		for (size_t i = 0; i < pbn; i++) {
 			real_t time = (i + 1) * pbdt,
@@ -517,8 +521,10 @@ int main(int argc, char **argv) {
 			prevtime = time; prevpos = pos;
 #endif /* DO_FPT */
 #ifdef DO_MAX
-			if (pbmax < pos)
-				pbmax = pos;
+			if (pbmaxpos < pos) {
+				pbmaxtime = time;
+				pbmaxpos = pos;
+			}
 #endif /* DO_MAX */
 		}
 #ifdef DO_FPT
@@ -528,18 +534,19 @@ int main(int argc, char **argv) {
 		}
 #endif /* DO_FPT */
 #ifdef DO_MAX
-		if (max != pbmax) {
-			assert(max < pbmax);
-			printf("# deviation %.17e %.17e\n", pbmax, max);
+		if (maxpos != pbmaxpos) {
+			assert(maxpos < pbmaxpos);
+			printf("# deviation %.17e %.17e %.17e %.17e\n",
+			       pbmaxtime, pbmaxpos, maxtime, maxpos);
 		}
 #endif /* DO_MAX */
-#endif
+#endif	
 
 #ifdef DO_FPT
 		printf("%.17e\n", (double)fpt);
 #endif /* DO_FPT */
 #ifdef DO_MAX
-		printf("%.17e\n", (double)max);
+		printf("%.17e %.17e\n", (double)maxtime, (double)maxpos);
 #endif /* DO_MAX */
 	}
 

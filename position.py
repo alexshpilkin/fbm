@@ -41,7 +41,8 @@ def readpositions(file):
 	data = []
 	for line in file:
 		if line.startswith('#'): continue
-		data.append(float(line) / np.sqrt(2) / TIME**hurst)
+		time, pos = line.split()
+		data.append(float(pos) / np.sqrt(2) / TIME**hurst)
 
 	nhist, bins = np.histogram(data, 50, density=True)
 	uhist, _    = np.histogram(data, 50)
