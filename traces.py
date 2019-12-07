@@ -33,7 +33,7 @@ def readtraces(file):
 		if not line.startswith(PREFIX):
 			continue
 		level, var = line[len(PREFIX):].split()
-		level = levels - int(level) + logn
+		level = logn + levels - int(level)
 		brown = (np.power(2.0, 1-2*hurst) - 0.5) * np.power(2.0, -2*int(level)*hurst)
 		levelhist.append(level)
 		varhist.append(float(var) / brown)
