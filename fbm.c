@@ -163,7 +163,6 @@ static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
 	matvec(g, cinv, gamma_, size);
 
 	real_t sigsq = 2.0 * powr(time, 2*hurst) - inner(gamma_, g, size);
-	assert(sigsq >= 0.0);
 	symrk1(cinv, 1.0/sigsq, g, size);
 	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
 	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
@@ -199,7 +198,8 @@ static real_t sample(real_t time, unsigned level) {
 	extend(cinv, times, time, size);
 	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var));
+	real_t value = values[size++] =
+	    var >= 0 ? mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)) : NAN;
 #endif /* !DO_PHONEBOOK */
 	real_t pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
 
@@ -225,6 +225,10 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 		return false;
 
 	real_t mtime = (ltime + rtime)/2, mpos = sample(mtime, level);
+	if (isnan(mpos)) {
+		*fpt = mpos;
+		return true;
+	}
 	strip *= stripfac;
 	return visitfpt(fpt, ltime, lpos, mtime, mpos, level-1, strip) ||
 	       visitfpt(fpt, mtime, mpos, rtime, rpos, level-1, strip);
@@ -248,6 +252,10 @@ static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
 		return;
 
 	real_t mtime = (ltime + rtime)/2, mpos = sample(mtime, level);
+	if (isnan(mpos)) {
+		*maxtime = mpos;
+		*maxpos = mpos;
+	}
 	bridge_t left  = {ltime, lpos, mtime, mpos},
 	         right = {mtime, mpos, rtime, rpos};
 	assert(top + 2 <= 2 * size);
@@ -498,6 +506,8 @@ int main(int argc, char **argv) {
 			qsort(queue + bottom, prevtop - bottom, sizeof(*queue),
 			      compare);
 			for (size_t i = bottom; i < prevtop; i++) {
+				if (isnan(maxpos))
+					break;
 				visitmax(&maxtime, &maxpos,
 				         queue[i].ltime, queue[i].lpos,
 				         queue[i].rtime, queue[i].rpos,
