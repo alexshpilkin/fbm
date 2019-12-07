@@ -558,15 +558,16 @@ int main(int argc, char **argv) {
 		if (fpt != pbfpt) {
 			assert(fpt > pbfpt);
 			printf("# error %u %.17e %.17e\n",
-			       findlevel(pbfpt), pbfpt, fpt);
+			       findlevel(pbfpt), (double)pbfpt, (double)fpt);
 		}
 #endif /* DO_FPT */
 #ifdef DO_MAX
 		if (maxpos != pbmaxpos) {
 			assert(maxpos < pbmaxpos);
 			printf("# error %u %.17e %.17e %.17e %.17e\n",
-			       findlevel(pbmaxtime), pbmaxtime, pbmaxpos,
-			       maxtime, maxpos);
+			       findlevel(pbmaxtime), (double)pbmaxtime,
+			       (double)pbmaxpos, (double)maxtime,
+			       (double)maxpos);
 		}
 #endif /* DO_MAX */
 #endif /* DO_PHONEBOOK */
