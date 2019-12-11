@@ -15,7 +15,7 @@ def readheaders(file):
 
 EPSILON = 1e-6
 def close(x, y):
-	return abs(x - y) < EPSILON * min(abs(x), abs(y))
+	return abs(x - y) <= EPSILON * min(abs(x), abs(y))
 
 def filtervalues(it):
 	return filter(lambda line: not line.startswith('#'), it)
