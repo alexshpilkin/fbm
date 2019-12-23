@@ -29,7 +29,9 @@ def readepsilon(file):
 			continue
 		errors += 1
 
-	return epsilon, errors/points, np.sqrt(errors)/points
+	# Wilson score interval for 1 sigma
+	return (epsilon, (errors + 0.5)/(points + 1.0),
+	        np.sqrt(errors*(points - errors)/points + 0.25)/(points + 1))
 
 def plotepsilon(file):
 	x, y, yerr = readepsilon(file)
