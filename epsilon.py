@@ -33,18 +33,27 @@ def readepsilon(file):
 	return (epsilon, (errors + 0.5)/(points + 1.0),
 	        np.sqrt(errors*(points - errors)/points + 0.25)/(points + 1))
 
-def plotepsilon(file):
+def plotepsilon(file, fmt='.k'):
 	x, y, yerr = readepsilon(file)
-	plt.errorbar(x, y, yerr, fmt='.k')
+	plt.errorbar(x, y, yerr, fmt=fmt)
 
 if __name__ == '__main__':
 	from sys import argv, stdin
 
+	fmt = '.k'
 	for name in argv[1:]:
+		if name.startswith('-f'):
+			fmt = None
+			continue
+		if fmt is None:
+			fmt = name
+			continue
 		with open(name, 'r') as file:
-			plotepsilon(file)
+			plotepsilon(file, fmt=fmt)
 	if len(argv) == 1:
-		plotepsilon(stdin)
+		plotepsilon(stdin, fmt=fmt)
+	plt.plot(plt.xlim(), np.array(plt.xlim()) * 3, '--', color='gray', linewidth=.5)
+	plt.plot(plt.xlim(), np.array(plt.xlim()) * 10, '--', color='gray', linewidth=.5)
 	plt.xscale('log')
 	plt.xlabel("$\epsilon'$")
 	plt.yscale('log')
