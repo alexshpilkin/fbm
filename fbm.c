@@ -207,7 +207,7 @@ static real_t sample(real_t time, unsigned level) {
 
 #ifndef DO_PHONEBOOK
 	if slower(trace & TVARIANCE)
-		printf("# variance %u %g\n", level, (double)var);
+		printf("# variance %u %.17e\n", level, (double)var);
 #endif /* !DO_PHONEBOOK */
 	if slower(trace & TBISECTS)
 		bisects[level-1]++;
@@ -218,8 +218,9 @@ static real_t sample(real_t time, unsigned level) {
 static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
                      real_t rpos, unsigned level, real_t strip) {
 	if slower(trace & TBRIDGES) {
-		printf("# bridge %u %g %g %g %g\n", level, (double)ltime,
-		       (double)lpos, (double)rtime, (double)rpos);
+		printf("# bridge %u %.17e %.17e %.17e %.17e\n",
+		       level, (double)ltime, (double)lpos, (double)rtime,
+		       (double)rpos);
 	}
 	if (level == 0) {
 		if (rpos < barrier)
@@ -245,8 +246,9 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
                      real_t rtime, real_t rpos, unsigned level, real_t strip) {
 	if slower(trace & TBRIDGES) {
-		printf("# bridge %u %g %g %g %g\n", level, (double)ltime,
-		       (double)lpos, (double)rtime, (double)rpos);
+		printf("# bridge %u %.17e %.17e %.17e %.17e\n",
+		       level, (double)ltime, (double)lpos, (double)rtime,
+		       (double)rpos);
 	}
 	if (MAX(lpos, rpos) < *maxpos - strip)
 		return;
