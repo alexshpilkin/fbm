@@ -99,17 +99,19 @@ static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 #endif /* !DO_PHONEBOOK */
 
 typedef enum {
+	TBISECTS = 1,
+	TBRIDGES = 2,
 #ifndef DO_PHONEBOOK
-	TVARIANCE = 1,
+	TVARIANCE = 4,
 #endif /* !DO_PHONEBOOK */
-	TBISECTS = 2,
 } tflag_t;
 
 static struct {tflag_t flag; char const *name;} tflags[] = {
+	{TBISECTS, "bisects"},
+	{TBRIDGES, "bridges"},
 #ifndef DO_PHONEBOOK
 	{TVARIANCE, "variance"},
 #endif /* !DO_PHONEBOOK */
-	{TBISECTS, "bisects"},
 };
 
 typedef struct {
@@ -215,6 +217,10 @@ static real_t sample(real_t time, unsigned level) {
 #ifdef DO_FPT
 static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
                      real_t rpos, unsigned level, real_t strip) {
+	if slower(trace & TBRIDGES) {
+		printf("# bridge %u %g %g %g %g\n", level, (double)ltime,
+		       (double)lpos, (double)rtime, (double)rpos);
+	}
 	if (level == 0) {
 		if (rpos < barrier)
 			return false;
@@ -238,6 +244,10 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 #ifdef DO_MAX
 static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
                      real_t rtime, real_t rpos, unsigned level, real_t strip) {
+	if slower(trace & TBRIDGES) {
+		printf("# bridge %u %g %g %g %g\n", level, (double)ltime,
+		       (double)lpos, (double)rtime, (double)rpos);
+	}
 	if (MAX(lpos, rpos) < *maxpos - strip)
 		return;
 	if (lpos > *maxpos) {
