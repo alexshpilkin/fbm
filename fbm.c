@@ -203,9 +203,9 @@ static real_t sample(real_t time, unsigned level) {
 	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
 	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
 	real_t value = values[size++] =
-	    var >= 0 ? mean + gsl_ran_gaussian_ziggurat(rng, sqrt(var)) : NAN;
+	    var >= 0 ? mean + gsl_ran_gaussian_ziggurat(rng, sqrtr(var)) : NAN;
 #endif /* !DO_PHONEBOOK */
-	real_t pos = value + lindrift * time + fracdrift * pow(time, 2*hurst);
+	real_t pos = value + lindrift * time + fracdrift * powr(time, 2*hurst);
 
 #ifndef DO_PHONEBOOK
 	if slower(trace & TVARIANCE)
@@ -388,7 +388,7 @@ int main(int argc, char **argv) {
 
 	real_t *eigen = fftwr_alloc_real(pbn + 1);
 	real_t prevexp, currexp, nextexp;
-	currexp = pow(1.0 / pbn, 2 * hurst);
+	currexp = powr(1.0 / pbn, 2 * hurst);
 	nextexp = 0.0;
 	for (size_t i = 0; i < pbn; i++) {
 		prevexp = currexp;
@@ -453,14 +453,14 @@ int main(int argc, char **argv) {
 		/* Generate noise */
 
 		for (size_t i = 1; i < pbn; i++) {
-			noise[i] = sqrt(0.25 * eigen[i] / pbn) *
+			noise[i] = sqrtr(0.25 * eigen[i] / pbn) *
 			           gsl_ran_gaussian_ziggurat(rng, 1.0);
-			noise[2*pbn-i] = sqrt(0.25 * eigen[i] / pbn) *
+			noise[2*pbn-i] = sqrtr(0.25 * eigen[i] / pbn) *
 			                 gsl_ran_gaussian_ziggurat(rng, 1.0);
 		}
-		noise[0] = sqrt(0.5 * eigen[0] / pbn) *
+		noise[0] = sqrtr(0.5 * eigen[0] / pbn) *
 		           gsl_ran_gaussian_ziggurat(rng, 1.0);
-		noise[pbn] = sqrt(0.5 * eigen[n] / pbn) *
+		noise[pbn] = sqrtr(0.5 * eigen[n] / pbn) *
 		             gsl_ran_gaussian_ziggurat(rng, 1.0);
 		fftwr_execute(noiseplan);
 
@@ -480,7 +480,7 @@ int main(int argc, char **argv) {
 #endif /* DO_PHONEBOOK */
 		for (size = 1; size < n; size++) {
 #ifdef DO_FPT
-			if (values[size-1] + lindrift * size*dt + fracdrift * pow(size*dt, 2*hurst) >= barrier)
+			if (values[size-1] + lindrift * size*dt + fracdrift * powr(size*dt, 2*hurst) >= barrier)
 				break;
 #endif /* DO_FPT */
 		}
