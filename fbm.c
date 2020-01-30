@@ -101,14 +101,16 @@ static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 typedef enum {
 	TBISECTS = 1,
 	TBRIDGES = 2,
+	TSTRIP = 4,
 #ifndef DO_PHONEBOOK
-	TVARIANCE = 4,
+	TVARIANCE = 8,
 #endif /* !DO_PHONEBOOK */
 } tflag_t;
 
 static struct {tflag_t flag; char const *name;} tflags[] = {
 	{TBISECTS, "bisects"},
 	{TBRIDGES, "bridges"},
+	{TSTRIP, "strip"},
 #ifndef DO_PHONEBOOK
 	{TVARIANCE, "variance"},
 #endif /* !DO_PHONEBOOK */
@@ -222,6 +224,10 @@ static bool visitfpt(real_t *fpt, real_t ltime, real_t lpos, real_t rtime,
 		       level, (double)ltime, (double)lpos, (double)rtime,
 		       (double)rpos);
 	}
+	if slower(trace & TSTRIP) {
+		printf("# strip %.17e %.17e\n",
+		       (double)barrier, (double)strip);
+	}
 	if (level == 0) {
 		if (rpos < barrier)
 			return false;
@@ -249,6 +255,10 @@ static void visitmax(real_t *maxtime, real_t *maxpos, real_t ltime, real_t lpos,
 		printf("# bridge %u %.17e %.17e %.17e %.17e\n",
 		       level, (double)ltime, (double)lpos, (double)rtime,
 		       (double)rpos);
+	}
+	if slower(trace & TSTRIP) {
+		printf("# strip %.17e %.17e\n",
+		       (double)*maxpos, (double)strip);
 	}
 	if (MAX(lpos, rpos) < *maxpos - strip)
 		return;
