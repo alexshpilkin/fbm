@@ -91,7 +91,27 @@ static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 		real_t sum = 0.0; size_t j, k;
 		for (j = 0, k = i*(i+1)/2; j < i; j++, k++)
 			sum += mat[k] * vec[j];
-		for (/* j = i, k = (i+1)*(i+2)/2 */; j < size; j++, k += j)
+		for (/* j = i, k = (i+1)*(i+2)/2 - 1*/; j < size; j++, k += j)
+			sum += mat[k] * vec[j];
+		out[i] = sum;
+	}
+}
+
+static void lwrvec(real_t *restrict out, real_t const *mat, real_t const *vec,
+                   size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		real_t sum = 0.0;
+		for (size_t j = 0, k = i*(i+1)/2; j <= i; j++, k++)
+			sum += mat[k] * vec[j];
+		out[i] = sum;
+	}
+}
+
+static void uprvec(real_t *restrict out, real_t const *mat, real_t const *vec,
+                   size_t size) {
+	for (size_t i = 0; i < size; i++) {
+		real_t sum = 0.0;
+		for (size_t j = i, k = (i+1)*(i+2)/2 - 1; j < size; j++, k += j)
 			sum += mat[k] * vec[j];
 		out[i] = sum;
 	}
