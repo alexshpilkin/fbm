@@ -14,14 +14,17 @@
 
 #if defined(USE_LDBL)
 typedef long double real_t;
+#define SUFFIX      "l"
 #define REAL(TOK)   TOK ## l
 #define FFTWR(TOK)  fftwl_ ## TOK
 #elif defined(USE_QUAD)
 typedef __float128 real_t;
+#define SUFFIX      "q"
 #define REAL(TOK)   TOK ## q
 #define FFTWR(TOK)  fftwq_ ## TOK
 #else
 typedef double real_t;
+#define SUFFIX      ""
 #define REAL(TOK)   TOK
 #define FFTWR(TOK)  fftw_ ## TOK
 #endif
@@ -373,8 +376,9 @@ int main(int argc, char **argv) {
 #ifdef DO_MAX
 	       "max"
 #endif /* DO_MAX */
+	       SUFFIX
 #ifdef DO_PHONEBOOK
-	       "-pb"
+	       "pb"
 #endif /* DO_PHONEBOOK */
 	       , (double)hurst, (double)lindrift, (double)fracdrift,
 #ifdef DO_FPT

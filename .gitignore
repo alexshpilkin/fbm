@@ -1,7 +1,11 @@
 /Makefile
 /fpt
-/fpt-pb
+/fptpb
+/fptl
+/fptq
 /max
-/max-pb
+/maxpb
+/maxl
+/maxq
 /rusage
 *.o
