@@ -131,7 +131,7 @@ static real_t *pbtimes, *pbvalues;
 #else /* if !DO_PHONEBOOK */
 #define pbtimes times
 #define pbvalues values
-static real_t *chol, *choi, *temp;
+static real_t *choi, *corr, *m;
 #endif /* !DO_PHONEBOOK */
 static real_t *times, *values;
 #ifdef DO_MAX
@@ -152,21 +152,18 @@ static int compare(void const *lhs_, void const *rhs_) {
 #endif /* DO_MAX */
 
 #ifndef DO_PHONEBOOK
-static void extend(real_t *restrict chol, real_t *restrict choi, real_t time,
-                   size_t size) {
+static void extend(real_t *restrict choi, real_t time, size_t size) {
 	assert(time >= 0.0);
 	times[size] = time;
 
 	for (size_t i = 0; i < size; i++) {
 		assert(times[i] >= 0.0);
-		temp[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
+		corr[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
 		          powr(fabsr(times[i] - time), 2*hurst);
 	}
 
-	real_t *m = chol + size*(size+1)/2;
-	lwrvec(m, choi, temp, size);
+	lwrvec(m, choi, corr, size);
 	real_t n = sqrtr(2.0 * powr(time, 2*hurst) - inner(m, m, size));
-	chol[(size+1)*(size+2)/2 - 1] = n;
 	/* NaN in n propagates to nu, mu */
 
 	real_t nu = 1.0 / n;
@@ -182,9 +179,9 @@ static real_t sample(real_t time, unsigned level) {
 	if (size + 1 > reserved) {
 		reserved *= 2;
 #ifndef DO_PHONEBOOK
-		chol = realloc(chol, reserved*(reserved+1)/2 * sizeof(*chol));
 		choi = realloc(choi, reserved*(reserved+1)/2 * sizeof(*choi));
-		temp = realloc(temp, reserved * sizeof(*temp));
+		corr = realloc(corr, reserved * sizeof(*corr));
+		m = realloc(m, reserved * sizeof(*m));
 #endif /* !DO_PHONEBOOK */
 		times = realloc(times, reserved * sizeof(*times));
 		values = realloc(values, reserved * sizeof(*values));
@@ -202,9 +199,9 @@ static real_t sample(real_t time, unsigned level) {
 	}
 	real_t value = values[size++] = pbvalues[i];
 #else /* !DO_PHONEBOOK */
-	extend(chol, choi, time, size);
-	/* NaN in chol, choi propagates to sigma, mean, value, pos */
-	real_t sigma = chol[(size+1)*(size+2)/2 - 1],
+	extend(choi, time, size);
+	/* NaN in choi propagates to sigma, mean, value, pos */
+	real_t sigma = 1.0 / choi[(size+1)*(size+2)/2 - 1],
 	       mean = -sigma * inner(values, choi + size*(size+1)/2, size);
 	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sigma);
 #endif /* !DO_PHONEBOOK */
@@ -413,9 +410,9 @@ int main(int argc, char **argv) {
 	pbtimes = malloc(pbn * sizeof(*pbtimes));
 	pbvalues = malloc(pbn * sizeof(*pbvalues));
 #else /* if !DO_PHONEBOOK */
-	chol = malloc(n*(n+1)/2 * sizeof(*chol));
 	choi = malloc(n*(n+1)/2 * sizeof(*choi));
-	temp = malloc(n * sizeof(*temp));
+	corr = malloc(n * sizeof(*corr));
+	m = malloc(n * sizeof(*m));
 #endif /* !DO_PHONEBOOK */
 	times = malloc(n * sizeof(*times));
 	values = malloc(n * sizeof(*values));
@@ -424,12 +421,11 @@ int main(int argc, char **argv) {
 #endif /* DO_MAX */
 
 #ifndef DO_PHONEBOOK
-	real_t *fullchol, *fullchoi;
+	real_t *fullchoi;
 	if faster(levels > 0) {
-		fullchol = malloc(n*(n+1)/2 * sizeof(*fullchol));
 		fullchoi = malloc(n*(n+1)/2 * sizeof(*fullchoi));
 		for (size_t i = 0; i < n; i++)
-			extend(fullchol, fullchoi, (i+1)*dt, i);
+			extend(fullchoi, (i+1)*dt, i);
 	}
 #endif /* !DO_PHONEBOOK */
 
@@ -483,10 +479,8 @@ int main(int argc, char **argv) {
 #endif /* DO_FPT */
 		}
 #ifndef DO_PHONEBOOK
-		if faster(levels > 0) {
-			memcpy(chol, fullchol, size*(size+1)/2 * sizeof(*chol));
+		if faster(levels > 0)
 			memcpy(choi, fullchoi, size*(size+1)/2 * sizeof(*choi));
-		}
 #endif /* !DO_PHONEBOOK */
 
 		/* Find first passage or maximum */
@@ -607,15 +601,14 @@ int main(int argc, char **argv) {
 	fftwr_free(noise); fftwr_destroy_plan(noiseplan);
 
 #ifndef DO_PHONEBOOK
-	if faster(levels > 0) {
-		free(fullchol); free(fullchoi);
-	}
+	if faster(levels > 0)
+		free(fullchoi);
 #endif /* !DO_PHONEBOOK */
 
 #ifdef DO_PHONEBOOK
 	free(pbtimes); free(pbvalues);
 #else /* !DO_PHONEBOOK */
-	free(chol); free(choi); free(temp);
+	free(choi); free(corr); free(m);
 #endif /* !DO_PHONEBOOK */
 	free(times); free(values);
 #ifdef DO_MAX
