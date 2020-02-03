@@ -75,28 +75,6 @@ static void scavec(real_t *out, real_t coe, real_t const *vec, size_t size) {
 		out[i] = coe * vec[i];
 }
 
-static void symrk1(real_t *restrict out, real_t coe, real_t const *vec,
-                   size_t size) {
-	size_t k = 0;
-	for (size_t i = 0; i < size; i++) {
-		real_t tmp = coe * vec[i];
-		for (size_t j = 0; j <= i; j++)
-			out[k++] += tmp * vec[j];
-	}
-}
-
-static void matvec(real_t *restrict out, real_t const *mat, real_t const *vec,
-                   size_t size) {
-	for (size_t i = 0; i < size; i++) {
-		real_t sum = 0.0; size_t j, k;
-		for (j = 0, k = i*(i+1)/2; j < i; j++, k++)
-			sum += mat[k] * vec[j];
-		for (/* j = i, k = (i+1)*(i+2)/2 - 1*/; j < size; j++, k += j)
-			sum += mat[k] * vec[j];
-		out[i] = sum;
-	}
-}
-
 static void lwrvec(real_t *restrict out, real_t const *mat, real_t const *vec,
                    size_t size) {
 	for (size_t i = 0; i < size; i++) {
@@ -153,7 +131,7 @@ static real_t *pbtimes, *pbvalues;
 #else /* if !DO_PHONEBOOK */
 #define pbtimes times
 #define pbvalues values
-static real_t *cinv, *gamma_, *g;
+static real_t *chol, *choi, *temp;
 #endif /* !DO_PHONEBOOK */
 static real_t *times, *values;
 #ifdef DO_MAX
@@ -174,22 +152,27 @@ static int compare(void const *lhs_, void const *rhs_) {
 #endif /* DO_MAX */
 
 #ifndef DO_PHONEBOOK
-static void extend(real_t *restrict cinv, real_t *restrict times, real_t time,
+static void extend(real_t *restrict chol, real_t *restrict choi, real_t time,
                    size_t size) {
+	assert(time >= 0.0);
 	times[size] = time;
 
-	assert(time >= 0.0);
 	for (size_t i = 0; i < size; i++) {
 		assert(times[i] >= 0.0);
-		gamma_[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
-		            powr(fabsr(times[i] - time), 2*hurst);
+		temp[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
+		          powr(fabsr(times[i] - time), 2*hurst);
 	}
-	matvec(g, cinv, gamma_, size);
 
-	real_t sigsq = 2.0 * powr(time, 2*hurst) - inner(gamma_, g, size);
-	symrk1(cinv, 1.0/sigsq, g, size);
-	scavec(cinv + size*(size+1)/2, -1.0/sigsq, g, size);
-	cinv[(size+1)*(size+2)/2 - 1] = 1.0/sigsq;
+	real_t *m = chol + size*(size+1)/2;
+	lwrvec(m, choi, temp, size);
+	real_t n = sqrtr(2.0 * powr(time, 2*hurst) - inner(m, m, size));
+	chol[(size+1)*(size+2)/2 - 1] = n;
+	/* NaN in n propagates to nu, mu */
+
+	real_t nu = 1.0 / n;
+	choi[(size+1)*(size+2)/2 - 1] = nu;
+	real_t *mu = choi + size*(size+1)/2;
+	uprvec(mu, choi, m, size); scavec(mu, -nu, mu, size);
 }
 #endif /* !DO_PHONEBOOK */
 
@@ -199,9 +182,9 @@ static real_t sample(real_t time, unsigned level) {
 	if (size + 1 > reserved) {
 		reserved *= 2;
 #ifndef DO_PHONEBOOK
-		cinv = realloc(cinv, reserved*(reserved+1)/2 * sizeof(*cinv));
-		gamma_ = realloc(gamma_, reserved * sizeof(*gamma_));
-		g = realloc(g, reserved * sizeof(*g));
+		chol = realloc(chol, reserved*(reserved+1)/2 * sizeof(*chol));
+		choi = realloc(choi, reserved*(reserved+1)/2 * sizeof(*choi));
+		temp = realloc(temp, reserved * sizeof(*temp));
 #endif /* !DO_PHONEBOOK */
 		times = realloc(times, reserved * sizeof(*times));
 		values = realloc(values, reserved * sizeof(*values));
@@ -219,17 +202,17 @@ static real_t sample(real_t time, unsigned level) {
 	}
 	real_t value = values[size++] = pbvalues[i];
 #else /* !DO_PHONEBOOK */
-	extend(cinv, times, time, size);
-	real_t var = 1.0 / cinv[(size+1)*(size+2)/2 - 1],
-	       mean = -var * inner(values, cinv + size*(size+1)/2, size);
-	real_t value = values[size++] =
-	    var >= 0 ? mean + gsl_ran_gaussian_ziggurat(rng, sqrtr(var)) : NAN;
+	extend(chol, choi, time, size);
+	/* NaN in chol, choi propagates to sigma, mean, value, pos */
+	real_t sigma = chol[(size+1)*(size+2)/2 - 1],
+	       mean = -sigma * inner(values, choi + size*(size+1)/2, size);
+	real_t value = values[size++] = mean + gsl_ran_gaussian_ziggurat(rng, sigma);
 #endif /* !DO_PHONEBOOK */
 	real_t pos = value + lindrift * time + fracdrift * powr(time, 2*hurst);
 
 #ifndef DO_PHONEBOOK
 	if slower(trace & TVARIANCE)
-		printf("# variance %u %.17e\n", level, (double)var);
+		printf("# variance %u %.17e\n", level, (double)(sigma * sigma));  /* FIXME better interface */
 #endif /* !DO_PHONEBOOK */
 	if slower(trace & TBISECTS)
 		bisects[level-1]++;
@@ -430,9 +413,9 @@ int main(int argc, char **argv) {
 	pbtimes = malloc(pbn * sizeof(*pbtimes));
 	pbvalues = malloc(pbn * sizeof(*pbvalues));
 #else /* if !DO_PHONEBOOK */
-	cinv = malloc(n*(n+1)/2 * sizeof(*cinv));
-	gamma_ = malloc(n * sizeof(*gamma_));
-	g = malloc(n * sizeof(*g));
+	chol = malloc(n*(n+1)/2 * sizeof(*chol));
+	choi = malloc(n*(n+1)/2 * sizeof(*choi));
+	temp = malloc(n * sizeof(*temp));
 #endif /* !DO_PHONEBOOK */
 	times = malloc(n * sizeof(*times));
 	values = malloc(n * sizeof(*values));
@@ -441,17 +424,12 @@ int main(int argc, char **argv) {
 #endif /* DO_MAX */
 
 #ifndef DO_PHONEBOOK
-	real_t **cinvs = NULL;
+	real_t *fullchol, *fullchoi;
 	if faster(levels > 0) {
-		cinvs = malloc(n * sizeof(*cinvs));
-		for (size_t i = 0; i < n; i++) {
-			cinvs[i] = malloc((i+1)*(i+2)/2 * sizeof(*cinvs[i]));
-			if (i > 0) { /* Avoid undefined behaviour */
-				memcpy(cinvs[i], cinvs[i-1],
-				       i*(i+1)/2 * sizeof(*cinvs[i]));
-			}
-			extend(cinvs[i], times, (i+1)*dt, i);
-		}
+		fullchol = malloc(n*(n+1)/2 * sizeof(*fullchol));
+		fullchoi = malloc(n*(n+1)/2 * sizeof(*fullchoi));
+		for (size_t i = 0; i < n; i++)
+			extend(fullchol, fullchoi, (i+1)*dt, i);
 	}
 #endif /* !DO_PHONEBOOK */
 
@@ -506,8 +484,8 @@ int main(int argc, char **argv) {
 		}
 #ifndef DO_PHONEBOOK
 		if faster(levels > 0) {
-			memcpy(cinv, cinvs[size-1],
-			       size*(size+1)/2 * sizeof(*cinv));
+			memcpy(chol, fullchol, size*(size+1)/2 * sizeof(*chol));
+			memcpy(choi, fullchoi, size*(size+1)/2 * sizeof(*choi));
 		}
 #endif /* !DO_PHONEBOOK */
 
@@ -630,16 +608,14 @@ int main(int argc, char **argv) {
 
 #ifndef DO_PHONEBOOK
 	if faster(levels > 0) {
-		for (size_t i = 0; i < n; i++)
-			free(cinvs[i]);
-		free(cinvs);
+		free(fullchol); free(fullchoi);
 	}
 #endif /* !DO_PHONEBOOK */
 
 #ifdef DO_PHONEBOOK
 	free(pbtimes); free(pbvalues);
 #else /* !DO_PHONEBOOK */
-	free(cinv); free(gamma_); free(g);
+	free(chol); free(choi); free(temp);
 #endif /* !DO_PHONEBOOK */
 	free(times); free(values);
 #ifdef DO_MAX
