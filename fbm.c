@@ -77,9 +77,9 @@ static void scavec(real_t *out, real_t coe, real_t const *vec, size_t size) {
 
 static void lwrvec(real_t *restrict out, real_t const *mat, real_t const *vec,
                    size_t size) {
-	for (size_t i = 0; i < size; i++) {
+	for (size_t i = 0, k = 0; i < size; i++) {
 		real_t sum = 0.0;
-		for (size_t j = 0, k = i*(i+1)/2; j <= i; j++, k++)
+		for (size_t j = 0 /* k = i*(i+1)/2 */; j <= i; j++, k++)
 			sum += mat[k] * vec[j];
 		out[i] = sum;
 	}
@@ -87,9 +87,9 @@ static void lwrvec(real_t *restrict out, real_t const *mat, real_t const *vec,
 
 static void uprvec(real_t *restrict out, real_t const *mat, real_t const *vec,
                    size_t size) {
-	for (size_t i = 0; i < size; i++) {
+	for (size_t i = 0, kk = 0; i < size; i++, kk += i + 1) {
 		real_t sum = 0.0;
-		for (size_t j = i, k = (i+1)*(i+2)/2 - 1; j < size; j++, k += j)
+		for (size_t j = i, k = kk; j < size; j++, k += j)
 			sum += mat[k] * vec[j];
 		out[i] = sum;
 	}
