@@ -5,6 +5,7 @@
 \usepackage[russian,english]{babel}
 \usepackage[final,activate={true,nocompatibility}]{microtype}
 \usepackage[tbtags]{amsmath}
+\usepackage[shortlabels]{enumitem}
 \usepackage{hyperref}
 
 \renewcommand\rm{\normalfont\rmfamily}
@@ -12,6 +13,20 @@
 \renewcommand\it{\normalfont\itshape}
 \renewcommand\tt{\normalfont\ttfamily}
 \usepackage{noweb}
+\noweboptions{breakcode}
+
+\makeatletter\@removefromreset{paragraph}{subsubsection}\makeatother
+\renewcommand\theparagraph{\arabic{paragraph}}
+\setkomafont{paragraph}{\sffamily\bfseries}
+\newlength\paragraphskip \setlength\paragraphskip{.6ex plus.4ex minus.3ex}
+\newlength\paragraphindent \setlength\paragraphindent{0pt}
+\newlength\paragraphsep \setlength\paragraphsep{.8em}
+\renewcommand\paragraph{%
+  \par\addpenalty{-500}\addvspace\paragraphskip
+  {\parindent=\paragraphindent\leavevmode}\refstepcounter{paragraph}%
+  {\normalfont\usekomafont{paragraph}\paragraphformat}%
+  \hskip\paragraphsep\ignorespaces}
+\renewcommand\paragraphformat{\theparagraph.}
 
 \let\term=\textit
 \renewcommand\cite[1]{[#1]}  % FIXME real citations
@@ -20,7 +35,7 @@
 \makeatletter\hypersetup{pdftitle=\@title,pdfauthor=\@author}\makeatother
 \begin{document}
 
-Consider the motion of a particle---or, indeed, the evolution of a variable---that is continuously affected by many small momentary forces due to its interaction with the environment.  It is natural to represent the position of this particle by a stochastic process~$(X(t))$ with continuous sample paths, and we can assume $X(0) = 0$ for convenience.  If the forces at different moments in time are independent, the process~$(X(t))$ should have independent increments, that is $X(t)-X(s)$ and $X(t')-X(s')$ should be independent of each other as long as the intervals~$(s,t)$ and~$(s',t')$ do not intersect.  This means that the position~$X(t)$ is a sum of many independent random variables~$X(kt/n)-X((k-1)t/n)$, $1\leq k\leq n$.  It turns out that this property together with the requirement of continuity is enough to apply the Lindeberg central limit theorem and prove that $X(t)$ is Gaussian at every time~$t$ \cite{\foreignlanguage{russian}{\textit{Гихман, Скороход}}, 6\,§3}.  From there it is not difficult to see that all joint distributions of $(X(t_1),\ldots, X(t_n))$ must be Gaussian as well; the process~$(X(t))$ itself is therefore called Gaussian.
+\paragraph Consider the motion of a particle---or, indeed, the evolution of a variable---that is continuously affected by many small momentary forces due to its interaction with the environment.  It is natural to represent the position of this particle by a stochastic process~$(X(t))$ with continuous sample paths, and we can assume $X(0) = 0$ for convenience.  If the forces at different moments in time are independent, the process~$(X(t))$ should have independent increments, that is $X(t')-X(s')$ and $X(t'')-X(s'')$ should be independent of each other as long as the intervals~$(s',t')$ and~$(s'',t'')$ do not intersect.  This means that the position~$X(t)$ is a sum of many independent random variables~$X(kt/n)-X((k-1)t/n)$, $1\leq k\leq n$.  It turns out that this property together with the requirement of continuity is enough to apply the Lindeberg central limit theorem and prove that $X(t)$ is Gaussian at every time~$t$ \cite{\foreignlanguage{russian}{\textit{Гихман, Скороход}}, 6\,§3}.  From there it is not difficult to see that all joint distributions of $(X(t_1),\ldots, X(t_n))$ must be Gaussian as well; the process~$(X(t))$ itself is consequently called Gaussian.
 
 We have derived Gaussianity from the seemingly benign requirements of continuity of paths and independence of increments.  Let us now assume that the properties of the environment do not change with time, so the process $(X(t))$ has stationary increments, that is $X(t+h)-X(t)$ does not depend on $t$.  Then both the mean~$\langle X(t)\rangle$ and the variance~$\langle(X(t)-\langle X(t)\rangle)^2\rangle$ grow linearly with time, and after subtracting a linear drift term~$\mu t$, $\mu =\langle X(1)\rangle$, we have a linearly growing mean squared displacement $\langle X(t)^2\rangle = 2Dt$, $2D =\langle X(1)^2\rangle$.  This behaviour is so common that we say our particle exhibits \term{normal diffusion}.
 
@@ -29,10 +44,65 @@ It turns out that the properties of Gaussianity, stationary increments, zero dri
 \begin{split}
   \langle X(t)X(s)\rangle
   &{}= (-1/2)\,\langle [X(t)-X(s)]^2 - X(t)^2 - X(s)^2\rangle \\
-  &{}= (-1/2)\,(2D\mathopen|t-s\mathclose| - 2Dt - 2Ds) \\
+  &{}= (-1/2)\,(2D\lvert t-s\rvert - 2Dt - 2Ds) \\
   &{}= 2D\min\{s, t\}.
 \end{split}
 \end{equation}
 The unique process we have thus picked out is called \term{Brownian motion} with diffusion constant~$D$.  It is ubiquitous in nature, from physics to economics, and for good reason:  as we have just shown, it is characterized by the very mild conditions of continuity of paths and stationarity and independence of increments \cite{\textit{Knight} 1}.  For example, every discrete-time random walk on discrete or continuous space has Brownian motion as its continuous limit as long as that continuous limit has continuous paths.  Normal diffusion is also commonplace exactly because it is exhibited by Brownian particles.  % FIXME other characterizations?
+
+\paragraph As omnipresent as Brownian motion is, it is not enough to describe all instances of continuous-time random motion in nature.  Non-Brownian behaviour most commonly manifests itself as diffusion that does not obey the law $\langle X(t)^2\rangle\propto t$, so the name \term{anomalous diffusion} has come to denote the whole field of inquiry into random behaviour beyond the Brownian regime.  If we are to describe such phenomena, however, we will have to give up one or more of the properties discussed above.  This gives us three main directions of generalization \cite{\textit{Delorme, Wiese}}:
+\begin{enumerate}[(a)]
+  \item\emph{discontinuous} paths: the process is a continuous-time analogue of a random walk, but the increments have non-Gaussian infinitely divisible distributions;  % FIXME continuous limits of Lévy flights and CTRW with heavy-tailed increments; Lévy-Khintchine classification
+  \item\emph{non-stationary} increments: the process describes Gaussian diffusion, but the diffusion coefficient is time-depedent;  % FIXME continuous limit of CTRW with infinite-mean waiting times [Meerschaert, Scheffler; Гребеньков] -- non-Gaussian?
+  \item\emph{non-independent} increments: the process may be Gaussian or non-Gaussian, and the increments are correlated.
+\end{enumerate}
+Fractional Brownian motion~\cite{\textit{Mandelbrot, Van Ness}} with Hurst parameter $H$ is a Gaussian process in the last family, the only centred one that conforms to the power law for anomalous diffusion $\langle X(t)^2\rangle\propto t^{2H}$.  This is easy to see: for any process~$(X(t))$ with $\langle X(t)^2\rangle = 2Dt^{2H}$, we can compute the covariances in a manner similar to Eq.~\eqref{polarization},
+\begin{equation*}
+\begin{split}
+  \langle X(t)X(s)\rangle
+  &{}= (-1/2)\,\langle [X(t)-X(s)]^2 - X(t)^2 - X(s)^2\rangle \\
+  &{}= (-1/2)\,(2D\lvert t-s\rvert^{2H} - 2Dt^{2H} - 2Ds^{2H}) \\
+  &{}= D(s^{2H} + t^{2H} -\lvert t-s\rvert^{2H})\,,
+\end{split}
+\end{equation*}
+and a centred Gaussian process is determined uniquely by them;  in particular, Brownian motion is recovered for $H = 1/2$.  We will need this covariance matrix later for the purposes of sampling, so let us transcribe the formula above into code.
+% FIXME delete the assertions?
+<<Compute value covariances at [[times[]]] and [[time]]>>=
+assert(time >= 0);
+for (size_t i = 0; i < size; i++) {
+	assert(times[i] >= 0);
+	cov[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
+	         powr(fabsr(times[i] - time), 2*hurst);
+}
+@ Here the value of $H$ is stored in the variable [[hurst]] and $D$ is set to unity.  The preprocessor macro~[[powr]] expands to one of [[pow]], [[powl]], or [[powq]] depending on which floating-point type is used as [[real_t]] in the program.  Other mathematical library functions such as [[fabs]] and [[sqrt]] are also wrapped in this manner.
+
+% FIXME use $\Delta t$ not $h$ in the following? the code calls it [[pbdt]].
+The variables~$Y_k = X(kh) - X((k-1)h)$ constructed from fractional Brownian motion~$(X(t))$ with Hurst parameter~$H$ form a stationary Gaussian sequence known as \term{fractional Gaussian noise} with parameter~$H$.  We have for the mean $\langle Y_k\rangle =\langle Y_1\rangle =\langle X(h)\rangle = 0$ and for the covariance
+\begin{equation*}
+\begin{split}
+  \langle Y_{k+\ell}Y_k\rangle
+  &{}=\langle Y_{\ell+1}Y_1\rangle \\
+  &{}=\langle[X((\ell + 1)h) - X(\ell h)]X(h)\rangle \\
+  &{}= Dh^{2H}[(\ell + 1)^{2H} - 2\ell^{2H} + (\ell - 1)^{2H}]\,,
+\end{split}
+\end{equation*}
+which again completely determines the sequence.  Stationary sequences turn out to be easier to sample than stationary-increment ones, so several approaches to sampling fractional Brownian motion on a uniform grid instead sample fractional Gaussian noise and sum the result.  We will use such an approach when we need to sample fractional Brownian motion on a large uniform grid.
+<<Compute noise covariances>>=
+real_t expmult = powr(pbdt, 2*hurst),
+       prevexp, currexp = expmult, nextexp = 0.0;
+for (size_t i = 0; i < pbsize; i++) {
+	prevexp = currexp; currexp = nextexp;
+	nextexp = powr(i+1, 2*hurst);
+	eigen[i] = expmult*(nextexp - 2.0*prevexp + currexp);
+}
+<<Compute times and sum noise to values>>=
+real_t sum = 0.0;
+for (size_t i = 0; i < pbsize; i++) {
+	pbtimes[i]  = (i + 1)*pbdt;
+	pbvalues[i] = sum += noise[i];
+}
+@ Here and in the sequel, the value $X(0) = 0$ is not stored.
+
+% FIXME FBm is a fractional integral, satisfies fractional Langevin equation, is H-self-similar (what is self-similarity?)
 
 \end{document}
