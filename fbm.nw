@@ -65,7 +65,7 @@ Fractional Brownian motion~\cite{\textit{Mandelbrot, Van Ness}} with Hurst param
   &{}= D(s^{2H} + t^{2H} -\lvert t-s\rvert^{2H})\,,
 \end{split}
 \end{equation*}
-and a centred Gaussian process is determined uniquely by them;  in particular, Brownian motion is recovered for $H = 1/2$.  We will need this covariance matrix later for the purposes of sampling, so let us transcribe the formula above into code.
+and a centred Gaussian process is determined uniquely by them;  in particular, Brownian motion is recovered for~$H = 1/2$, and \term{ballistic motion} $(X(t)) = (Vt)$ with $V$ a Gaussian random variable for~$H = 1$.  We will need this covariance matrix later for the purposes of sampling, so let us transcribe the formula above into code.
 % FIXME delete the assertions?
 <<Compute value covariances at [[times[]]] and [[time]]>>=
 assert(time >= 0);
@@ -74,7 +74,7 @@ for (size_t i = 0; i < size; i++) {
 	cov[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
 	         powr(fabsr(times[i] - time), 2*hurst);
 }
-@ Here the value of $H$ is stored in the variable [[hurst]] and $D$ is set to unity.  The preprocessor macro~[[powr]] expands to one of [[pow]], [[powl]], or [[powq]] depending on which floating-point type is used as [[real_t]] in the program.  Other mathematical library functions such as [[fabs]] and [[sqrt]] are also wrapped in this manner.
+@ Here the value of $H$ is stored in the variable [[hurst]] and $D$ is set to unity.  The preprocessor macro~[[powr]] expands to one of [[pow]], [[powl]], or [[powq]] depending on which floating-point type is used as [[real_t]] in the program.  Other mathematical library functions such as [[fabs]] and [[sqrt]] are also wrapped in this manner.  % FIXME  what is real_t? "working precision"
 
 % FIXME use $\Delta t$ not $h$ in the following? the code calls it [[pbdt]].
 The variables~$Y_k = X(kh) - X((k-1)h)$ constructed from fractional Brownian motion~$(X(t))$ with Hurst parameter~$H$ form a stationary Gaussian sequence known as \term{fractional Gaussian noise} with parameter~$H$.  We have for the mean $\langle Y_k\rangle =\langle Y_1\rangle =\langle X(h)\rangle = 0$ and for the covariance
@@ -86,6 +86,7 @@ The variables~$Y_k = X(kh) - X((k-1)h)$ constructed from fractional Brownian mot
   &{}= Dh^{2H}[(\ell + 1)^{2H} - 2\ell^{2H} + (\ell - 1)^{2H}]\,,
 \end{split}
 \end{equation*}
+% FIXME discuss positive and negative correlation for H < and > 1/2?
 which again completely determines the sequence.  Stationary sequences turn out to be easier to sample than stationary-increment ones, so several approaches to sampling fractional Brownian motion on a uniform grid instead sample fractional Gaussian noise and sum the result.  We will use such an approach when we need to sample fractional Brownian motion on a large uniform grid.
 <<Compute noise covariances>>=
 real_t expmult = powr(pbdt, 2*hurst),
@@ -103,6 +104,38 @@ for (size_t i = 0; i < pbsize; i++) {
 }
 @ Here and in the sequel, the value $X(0) = 0$ is not stored.
 
-% FIXME FBm is a fractional integral, satisfies fractional Langevin equation, is H-self-similar (what is self-similarity?)
+\paragraph Consider the action of space and time rescalings on a stochastic process~$(X(t))$ starting at zero.  If one can always be counteracted by the other, that is if for any time scaling factor~$a$ there is a space scaling factor~$b(a)$ such that $(X(at)) = (b(a)X(t))$, and $b$ is not identically equal to one, the process~$(X(t))$ is called \term{self-similar}.  Observe that $b(a'a'') = b(a')b(a'')$; under mild technical conditions, we also have that $b(a)$ is continuous, so $b(a) = a^H$ for a certain~$H$~\cite{\textit{Lamperti}; \textit{Embrechts, Maejima} 1.1}.  The process~$(X(t))$ is then more specifically called \term{$H$-self-similar} and $H$ is called its \term{Hurst parameter}.  Every $H$-self-similar process~$(X(t))$ starts at zero:  indeed, $a^H X(0)$ is distributed identically for all~$a$, and we can set $a\to 0$.  Together with stationarity of increments, $H$-self-similarity for $H\neq 1$ implies zero means \cite{\textit{Taqqu}, see \textit{Rao}}: $2^H\langle X(t)\rangle =\langle X(2t)\rangle =\langle [X(2t)-X(t)] + [X(t)-X(0)]\rangle = 2\langle X(t)\rangle$.
+
+In the case of fractional Brownian motion, we have
+\begin{equation*}
+\begin{split}
+  \langle X(at)X(as)\rangle
+  &{}= D[(as)^{2H} + (at)^{2H} -\lvert a(t-s)\rvert^{2H}] \\
+  &{}= a^{2H}D(s^{2H} + t^{2H} -\lvert t-s\rvert^{2H}) \\
+  &{}=\langle a^H X(t)\times a^H X(t)\rangle
+\end{split}
+\end{equation*}
+and $\langle X(at)\rangle =\langle a^H X(t)\rangle = 0$, so by Gaussianity $(X(at)) = (a^H X(t))$.  Fractional Brownian motion with Hurst parameter~$H$ is therefore $H$-self-similar, justifying the dual use of the term \textit{Hurst parameter}.  Moreover, for $H\neq 1$ it is the only $H$-self-similar Gaussian process with stationary increments, because $H$-self-similarity and stationary increments imply power-law anomalous diffusion $\langle X(t)^2\rangle = t^{2H}\langle X(1)^2\rangle\propto t^{2H}$ as well as zero means and starting at zero.
+% This self-similarity is also apparent in the dimension the diffusion constant~$D$.
+
+The self-similarity properties of fractional Brownian motion can also be expressed in terms of fractional Gaussian noise~\cite{\foreignlanguage{russian}{\textit{Синай}}; \textit{Embrechts, Maejima} 2.2; Samorodnitsky, Taqqu 7.2.3}.  For a stationary sequence $(Y_k)$, define the \term{renormalization group} transformation of index~$H$,
+\begin{equation*}
+  (Y_k)\mapsto (A_n Y_k),\quad A_n Y_k =\frac 1{n^H}\sum_{\ell = n(k-1)+1}^{nk} Y_\ell\,.
+\end{equation*}
+If the variables~$Y_k = X(kh) - X((k-1)h)$ are constructed from an $H$-self-similar process~$(X(t))$ with stationary increments, then $(Y_k)$ will be fixed by the renormalization group:  the renormalized variables
+\begin{equation*}
+\begin{split}
+  A_n Y_k
+  &{}=\frac 1{n^H}\sum_{\ell = n(k-1)+1}^{nk}[X(\ell h) - X((\ell-1)h)] \\
+  &{}=\frac 1{n^H}[X(nkh) - X(n(k-1)h)]
+\end{split}
+\end{equation*}
+are distributed identically to the original variables $Y_k\,$.  To go in the other direction, from a fixed point of the renormalization group of index $H$ to an $H$-self-similar process, set
+\begin{equation*}
+  X(t) =\lim_{n\to\infty} \frac 1{n^H}\sum_{k = 1}^{\lfloor nt/h\rfloor} Y_k\,.
+\end{equation*}
+This correspondence together with the characterization of fractional Brownian motion above implies that fractional Gaussian noise with parameter $H$ is the unique Gaussian fixed point of the renormalization group of index $H\neq 1$.
+
+% FIXME FBm is a fractional integral, satisfies fractional Langevin equation
 
 \end{document}
