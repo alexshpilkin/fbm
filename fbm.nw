@@ -6,6 +6,7 @@
 \usepackage[final,activate={true,nocompatibility}]{microtype}
 \usepackage[tbtags]{amsmath}
 \usepackage[shortlabels]{enumitem}
+\usepackage{mathtools}
 \usepackage{hyperref}
 
 \renewcommand\rm{\normalfont\rmfamily}
@@ -29,6 +30,10 @@
 \renewcommand\paragraphformat{\theparagraph.}
 
 \let\term=\textit
+\renewcommand\Re{\operatorname{Re}}
+\renewcommand\Im{\operatorname{Im}}
+\DeclareMathOperator*\res{res}
+\let\eye=i  \let\pie=\pi
 \renewcommand\cite[1]{[#1]}  % FIXME real citations
 
 \title{Fractional Brownian motion}
@@ -56,7 +61,7 @@ The unique process we have thus picked out is called \term{Brownian motion} with
   \item\emph{non-stationary} increments: the process describes Gaussian diffusion, but the diffusion coefficient is time-depedent;  % FIXME continuous limit of CTRW with infinite-mean waiting times [Meerschaert, Scheffler; Гребеньков] -- non-Gaussian?
   \item\emph{non-independent} increments: the process may be Gaussian or non-Gaussian, and the increments are correlated.
 \end{enumerate}
-Fractional Brownian motion~\cite{\textit{Mandelbrot, Van Ness}} with Hurst parameter $H$ is a Gaussian process in the last family, the only centred one that conforms to the power law for anomalous diffusion $\langle X(t)^2\rangle\propto t^{2H}$.  This is easy to see: for any process~$(X(t))$ with $\langle X(t)^2\rangle = 2Dt^{2H}$, we can compute the covariances in a manner similar to Eq.~\eqref{polarization},
+Fractional Brownian motion~\cite{\foreignlanguage{russian}{\textit{Колмогоров}}; \textit{Mandelbrot, Van Ness}} with Hurst parameter~$H$ is a Gaussian process in the last family, the only centred one that conforms to the power law for anomalous diffusion $\langle X(t)^2\rangle\propto t^{2H}$.  This is easy to see: for any process~$(X(t))$ with $\langle X(t)^2\rangle = 2Dt^{2H}$, we can compute the covariances in a manner similar to Eq.~\eqref{polarization},
 \begin{equation*}
 \begin{split}
   \langle X(t)X(s)\rangle
@@ -118,7 +123,7 @@ In the case of fractional Brownian motion, we have
 and $\langle X(at)\rangle =\langle a^H X(t)\rangle = 0$, so by Gaussianity $(X(at)) = (a^H X(t))$.  Fractional Brownian motion with Hurst parameter~$H$ is therefore $H$-self-similar, justifying the dual use of the term \textit{Hurst parameter}.  Moreover, for $H\neq 1$ it is the only $H$-self-similar Gaussian process with stationary increments, because $H$-self-similarity and stationary increments imply power-law anomalous diffusion $\langle X(t)^2\rangle = t^{2H}\langle X(1)^2\rangle\propto t^{2H}$ as well as zero means and starting at zero.
 % This self-similarity is also apparent in the dimension the diffusion constant~$D$.
 
-The self-similarity properties of fractional Brownian motion can also be expressed in terms of fractional Gaussian noise~\cite{\foreignlanguage{russian}{\textit{Синай}}; \textit{Embrechts, Maejima} 2.2; Samorodnitsky, Taqqu 7.2.3}.  For a stationary sequence $(Y_k)$, define the \term{renormalization group} transformation of index~$H$,
+The self-similarity properties of fractional Brownian motion can also be expressed in terms of fractional Gaussian noise~\cite{\foreignlanguage{russian}{\textit{Синай}}; \textit{Embrechts, Maejima} 2.2; \textit{Samorodnitsky, Taqqu} 7.2.3}.  For a stationary sequence $(Y_k)$, define the \term{renormalization group} transformation of index~$H$,
 \begin{equation*}
   (Y_k)\mapsto (A_n Y_k),\quad A_n Y_k =\frac 1{n^H}\sum_{\ell = n(k-1)+1}^{nk} Y_\ell\,.
 \end{equation*}
@@ -135,6 +140,63 @@ are distributed identically to the original variables $Y_k\,$.  To go in the oth
   X(t) =\lim_{n\to\infty} \frac 1{n^H}\sum_{k = 1}^{\lfloor nt/h\rfloor} Y_k\,.
 \end{equation*}
 This correspondence together with the characterization of fractional Brownian motion above implies that fractional Gaussian noise with parameter $H$ is the unique Gaussian fixed point of the renormalization group of index $H\neq 1$.
+
+\paragraph We have so far focused on unique characterizations, but glossed over existence questions;  let us now discuss those in an informal manner and simultaneously establish a link with the original description of fractional Brownian motion by Mandelbrot and Van~Ness~\cite{\textit{Mandelbrot, Van~Ness}}.
+
+First of all, if fractional Brownian motion~$(X(t))$ with Hurst parameter $H$ is to exist, the covariance matrix
+\begin{equation*}
+  C_{ij} =\langle X(t_i)X(t_j)\rangle = D(t_i^{2H} + t_j^{2H} + \lvert t_i-t_j\rvert^{2H})
+\end{equation*}
+must be positive semidefinite for any sequence of times $(t_i)$.  However, for $H > 1$, setting $(t_i) = (1, 2)$ and $(a_i) = (-2, 1)$ gives $\sum a_i C_{ij} a_j = 2D(4 - 2^{2H}) < 0$, so fractional Brownian motion does not exist.  For $0 < H\leq 1$, one can in fact prove that $(C_{ij})$ is always positive definite and use a general theorem to establish the existence of fractional Brownian motion~\cite{\textit{Nourdin} 1.5}, but we will follow a more explicit approach.
+
+Indefinite integration
+\begin{equation*}
+  I_+ f(s) =\int_{-\infty}^s dt\,f(t) =\int dt\,\theta(s-t)f(t) =\theta\ast f(s)
+\end{equation*}
+can be expressed as convolution with kernel $\Phi_1(s) =\theta(s)$ equal to the Heaviside function.  So it is no surprise that repeated indefinite integrations can be expressed as convolutions as well:
+\begin{align*}
+  I_+^2 f(s) &{}=\begin{aligned}[t]
+    \Phi_1\ast\Phi_1\ast f(s)
+    &{}=\Phi_2\ast f(s),\\
+    &\phantom{{}={}}\Phi_2(s) =\int dt\,\theta(s-t)\,\theta(t) =\frac{s\,\theta(s)}1\,,
+  \end{aligned}\\
+  I_+^3 f(s) &{}=\begin{aligned}[t]
+    \Phi_1\ast\Phi_2\ast f(s)
+    &{}=\Phi_3\ast f(s),\\
+    &\phantom{{}={}}\Phi_3(s) =\int dt\,\theta(s-t)\,\frac{t\theta(t)}1 =\frac{s^2\theta(s)}{1\times 2}\,,
+  \end{aligned}\\
+  &{}\vdotswithin{=}\\
+  I_+^{k+1}f(s) &{}=\begin{aligned}[t]
+    \Phi_1\ast\Phi_k\ast f(s)
+    &{}=\Phi_{k+1}\ast f(s),\\
+    &\phantom{{}={}}\Phi_{k+1}(s) =\int dt\,\theta(s-t)\,\frac{t^{k-1}\theta(t)}{(k-1)!} =\frac{s^k\theta(s)}{k!}\,.
+  \end{aligned}
+\end{align*}
+This is the \term{Cauchy formula} for repeated integration.  Surprisingly, the fact that $k$ is an integer is immaterial to the final expression:  we can set for any complex $\alpha$ with $\Re\alpha > 0$
+\begin{equation*}
+  I_+^\alpha f(s) =\Phi_\alpha\ast f(s),\quad\Phi_\alpha(s) =\frac{s^{\alpha-1}\theta(s)}{\Gamma(\alpha)}\,.
+\end{equation*}
+The resulting operation is called the Riemann--Liouville \term{fractional integral} on the real line~\cite{\textit{Oldham, Spanier}; \textit{Miller, Ross}; \textit{Podlubny}; \textit{Samko, Kilbas, Marichev}; \foreignlanguage{russian}{\textit{Гельфанд, Шилов}~I.5.5}}.  A short calculation shows that $\Phi_\alpha\ast\Phi_\beta =\Phi_{\alpha +\beta}$ and so the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ implied by the notation is valid.  The convolution theorem for the Fourier transform gives $I_+^\alpha f(\omega) =\Phi_\alpha(\omega)f(\omega)$ with $\Phi_\alpha(\omega) = \exp[\eye\pie\alpha/2](\omega +\eye 0)^{-\alpha}$ \cite{\foreignlanguage{russian}{\textit{Гельфанд, Шилов}~II.2.3}}, or schematically $I_+^\alpha f(\omega) = (-\eye\omega)^{-\alpha} f(\omega)$, as expected for the Fourier transform of an integral of order~$\alpha$.
+
+The restriction $\Re\alpha > 0$ for the order of integration is, of course, unsatisfactory;  we would at the very least like to have $I_+^0 f(s) = f(s)$, $\Phi_0(s) =\delta(s)$.  A theory that allows arbitrary orders of integration~$\alpha$ and includes differentiation at~$\alpha = -1, -2,\ldots$ can be developed and is described in the references, but for our purposes it will be sufficient to extend the domain of definition to $\Re\alpha > -1$.  One proceeds by analytic continuation~\cite{\foreignlanguage{russian}{\textit{Гельфанд, Шилов}~I.3.2, I.3.5}}, noting that $\int \Phi_\alpha(t)\phi(t)dt$ is holomorphic in~$\alpha$ for any test function~$\phi$ and that the right-hand side of the equality
+\begin{equation*}
+  \int\Phi_\alpha(t)\phi(t)dt =\frac 1{\Gamma(\alpha)}\left\{
+    \int_0^a t^{\alpha-1}[\phi(t) -\phi(0)]dt +
+    \int_a^{+\infty} t^{\alpha-1}\phi(t)\,dt +
+    \frac{a^\alpha\phi(0)}\alpha
+  \right\}
+\end{equation*}
+% FIXME Hadamard’s parties finies [Гельфанд, Шилов; Samko, Kilbas, Marichev]
+valid for any $a$ and $\Re\alpha > 0$ exists for $\Re\alpha > -1$, $\alpha\neq 0$, thus is the unique analytic continuation of the left-hand side for these values of $\alpha$.  The definition for the fractional derivative~$I_+^\alpha$, $-1 <\alpha < 0$, obtained by taking $a\to +\infty$ in this expression is known as the \term{Marchaud fractional derivative}~\cite{\textit{Samko, Kilbas, Marichev}; \textit{Pipiras, Taqqu}}.  Finally, we can confirm that $\Phi_\alpha(s) =\delta(s)$ at $\alpha = 0$, where both $\Gamma(\alpha)$ and the expression in braces have a pole, by setting $a = 1$ and taking residues:
+\begin{equation*}
+  \int\Phi_0(t)\phi(t)dt =
+  \frac{\res_{\alpha = 0} \phi(0)/\alpha}{\res_{\alpha = 0}\Gamma(\alpha+1)/\alpha} =
+  \phi(0) =\int\delta(t)\phi(t)dt.
+\end{equation*}
+We have therefore extended $I_+^\alpha$ to all $\alpha$ with $\Re\alpha > -1$.  By uniqueness of analytic continuation, the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ is valid whenever both sides of the equation are defined.
+% FIXME scaling properties?
+% FIXME adjoint operator I_-^\alpha
+% FIXME why do we need fractional calculus
 
 % FIXME FBm is a fractional integral, satisfies fractional Langevin equation
 
