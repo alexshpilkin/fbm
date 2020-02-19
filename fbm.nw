@@ -81,7 +81,7 @@ for (size_t i = 0; i < size; i++) {
 	cov[i] = powr(times[i], 2*hurst) + powr(time, 2*hurst) -
 	         powr(fabsr(times[i] - time), 2*hurst);
 }
-@ Here the value of $H$ is stored in the variable [[hurst]] and $D$ is set to unity.  The preprocessor macro~[[powr]] expands to one of [[pow]], [[powl]], or [[powq]] depending on which floating-point type is used as [[real_t]] in the program.  Other mathematical library functions such as [[fabs]] and [[sqrt]] are also wrapped in this manner.  % FIXME  what is real_t? "working precision"
+@ Here the value of $H$ is stored in the variable [[hurst]] and $D$ is set to unity.  The preprocessor macro~[[powr]] expands to one of [[pow]], [[powl]], or [[powq]] depending on which working precision type~[[real_t]] is used in the program.  Other mathematical library functions such as [[fabs]] and [[sqrt]] are also wrapped in this manner.
 
 % FIXME use $\Delta t$ not $h$ in the following? the code calls it [[pbdt]].
 The variables~$Y_k = X(kh) - X((k-1)h)$ constructed from fractional Brownian motion~$(X(t))$ with Hurst parameter~$H$ form a stationary Gaussian sequence known as \term{fractional Gaussian noise} with parameter~$H$.  We have for the mean $\langle Y_k\rangle =\langle Y_1\rangle =\langle X(h)\rangle = 0$ and for the covariance
