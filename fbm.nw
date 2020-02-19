@@ -149,7 +149,12 @@ First of all, if fractional Brownian motion~$(X(t))$ with Hurst parameter $H$ is
 \end{equation*}
 must be positive semidefinite for any sequence of times $(t_i)$.  However, for $H > 1$, setting $(t_i) = (1, 2)$ and $(a_i) = (-2, 1)$ gives $\sum a_i C_{ij} a_j = 2D(4 - 2^{2H}) < 0$, so fractional Brownian motion does not exist.  For $0 < H\leq 1$, one can in fact prove that $(C_{ij})$ is always positive definite and use a general theorem to establish the existence of fractional Brownian motion~\cite{\textit{Nourdin} 1.5}, but we will follow a more explicit approach.
 
-Indefinite integration
+Ordinary Brownian motion~$(B(t))$ can be constructed as a continuous-time limit of random walks \cite{\textit{Knight} 1.3}.  Its derivative requires more work \cite{\foreignlanguage{russian}{\textit{Гельфанд, Виленкин}}; \textit{Hida}; \textit{Øksendal}; \textit{Oliveira}}, but at least informally it is a centred stationary Gaussian process~$(\dot B(t))$ with covariance $\langle\dot B(t)\dot B(s)\rangle = 2D\,\delta(t-s)$.  The derivative is $(-1/2)$-self-similar;  as expected, differentiation lowers the Hurst parameter by one and integration raises it by one.  This suggests that an $H$-self-similar process can be constructed by integrating $(\dot B(t))$ from zero a nonintegral number $H + 1/2$ of times.  It is not apparent why this \term{Riemann--Liouville process} should have stationary increments---and in fact it does not, so it is different from fractional Brownian motion \cite{\textit{Marinucci, Robinson}; \textit{Lifshits} 7.3.4}.  The $(H-1)$-self-similar process~$(\dot X(t))$ obtained by integrating $(\dot B(t))$ from negative infinity $H - 1/2$ times should be stationary, however, as long as our hypothetical fractional integral is translation invariant in the sense that integrating $f({\cdot}-c)$ from~$a+c$ to~$b+c$ is the same as integrating $f$ from~$a$ to~$b$.  Fractional Brownian motion is then obtained by an ordinary indefinite integral of $(\dot X(t))$ from zero.  To implement this program, we have to first establish a theory of integration of fractional order, so let us get to that now.
+
+% FIXME "white noise" ?
+% FIXME RLp is also sometimes caled fBm
+
+\paragraph Indefinite integration
 \begin{equation*}
   I_+ f(s) =\int_{-\infty}^s dt\,f(t) =\int dt\,\theta(s-t)f(t) =\theta\ast f(s)
 \end{equation*}
@@ -172,11 +177,11 @@ can be expressed as convolution with kernel $\Phi_1(s) =\theta(s)$ equal to the 
     &\phantom{{}={}}\Phi_{k+1}(s) =\int dt\,\theta(s-t)\,\frac{t^{k-1}\theta(t)}{(k-1)!} =\frac{s^k\theta(s)}{k!}\,.
   \end{aligned}
 \end{align*}
-This is the \term{Cauchy formula} for repeated integration.  Surprisingly, the fact that $k$ is an integer is immaterial to the final expression:  we can set for any complex $\alpha$ with $\Re\alpha > 0$
+This is the \term{Cauchy formula} for repeated integration.  The fact that $k$ is an integer is immaterial to the final expression:  we can set for any complex $\alpha$ with $\Re\alpha > 0$
 \begin{equation*}
   I_+^\alpha f(s) =\Phi_\alpha\ast f(s),\quad\Phi_\alpha(s) =\frac{s^{\alpha-1}\theta(s)}{\Gamma(\alpha)}\,.
 \end{equation*}
-The resulting operation is called the Riemann--Liouville \term{fractional integral} on the real line~\cite{\textit{Oldham, Spanier}; \textit{Miller, Ross}; \textit{Podlubny}; \textit{Samko, Kilbas, Marichev}; \foreignlanguage{russian}{\textit{Гельфанд, Шилов}~I.5.5}}.  A short calculation shows that $\Phi_\alpha\ast\Phi_\beta =\Phi_{\alpha +\beta}$ and so the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ implied by the notation is valid.  The convolution theorem for the Fourier transform gives $I_+^\alpha f(\omega) =\Phi_\alpha(\omega)f(\omega)$ with $\Phi_\alpha(\omega) = \exp[\eye\pie\alpha/2](\omega +\eye 0)^{-\alpha}$ \cite{\foreignlanguage{russian}{\textit{Гельфанд, Шилов}~II.2.3}}, or schematically $I_+^\alpha f(\omega) = (-\eye\omega)^{-\alpha} f(\omega)$, as expected for the Fourier transform of an integral of order~$\alpha$.
+The resulting operation is called the Riemann--Liouville \term{fractional integral} on the real line~\cite{\textit{Oldham, Spanier}; \textit{Miller, Ross}; \textit{Podlubny}; \textit{Samko, Kilbas, Marichev}; \foreignlanguage{russian}{\textit{Гельфанд, Шилов}~I.5.5}}.  A short calculation shows that $\Phi_\alpha\ast\Phi_\beta =\Phi_{\alpha +\beta}$ and so the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ implied by the notation is valid.  The convolution theorem for the Fourier transform gives $I_+^\alpha f(\omega) =\Phi_\alpha(\omega)f(\omega)$ with $\Phi_\alpha(\omega) = \exp[\eye\pie\alpha/2](\omega +\eye 0)^{-\alpha}$ \cite{\foreignlanguage{russian}{\textit{Гельфанд, Шилов}~II.2.3}}, or schematically $I_+^\alpha f(\omega) = (-\eye\omega)^{-\alpha} f(\omega)$, as expected for the Fourier transform of an integral of order~$\alpha$.  Finally, if $f$ is homogeneous of degree $H$, $f(ax) = a^H f(x)$, then $I_+^\alpha f$ is homogeneous of degree $H +\alpha$ due to the factor $s^{\alpha-1}ds$ in the convolution integral.
 
 The restriction $\Re\alpha > 0$ for the order of integration is, of course, unsatisfactory;  we would at the very least like to have $I_+^0 f(s) = f(s)$, $\Phi_0(s) =\delta(s)$.  A theory that allows arbitrary orders of integration~$\alpha$ and includes differentiation at~$\alpha = -1, -2,\ldots$ can be developed and is described in the references, but for our purposes it will be sufficient to extend the domain of definition to $\Re\alpha > -1$.  One proceeds by analytic continuation~\cite{\foreignlanguage{russian}{\textit{Гельфанд, Шилов}~I.3.2, I.3.5}}, noting that $\int \Phi_\alpha(t)\phi(t)dt$ is holomorphic in~$\alpha$ for any test function~$\phi$ and that the right-hand side of the equality
 \begin{equation*}
@@ -196,7 +201,6 @@ valid for any $a$ and $\Re\alpha > 0$ exists for $\Re\alpha > -1$, $\alpha\neq 0
 We have therefore extended $I_+^\alpha$ to all $\alpha$ with $\Re\alpha > -1$.  By uniqueness of analytic continuation, the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ is valid whenever both sides of the equation are defined.
 % FIXME scaling properties?
 % FIXME adjoint operator I_-^\alpha
-% FIXME why do we need fractional calculus
 
 % FIXME FBm is a fractional integral, satisfies fractional Langevin equation
 
