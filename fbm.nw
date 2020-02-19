@@ -199,7 +199,7 @@ valid for any $a$ and $\Re\alpha > 0$ exists for $\Re\alpha > -1$, $\alpha\neq 0
   \frac{\res_{\alpha = 0} \phi(0)/\alpha}{\res_{\alpha = 0}\Gamma(\alpha+1)/\alpha} =
   \phi(0) =\int\delta(t)\phi(t)dt.
 \end{equation*}
-We have therefore extended $I_+^\alpha$ to all $\alpha$ with $\Re\alpha > -1$.  By uniqueness of analytic continuation, the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ is valid whenever both sides of the equation are defined.  That $\Phi_\alpha$ is homogeneous of degree $\alpha - 1$ also follows from uniqueness.
+We have now extended $I_+^\alpha$ to all $\alpha$ with $\Re\alpha > -1$.  By uniqueness of analytic continuation, the semigroup property $I_+^{\vphantom\beta\alpha} I_+^\beta = I_+^{\alpha +\beta}$ is valid whenever both sides of the equation are defined.  That $\Phi_\alpha$ is homogeneous of degree $\alpha - 1$ also follows from uniqueness.
 
 We have defined the fractional integral with a variable upper limit.  We do not need to work out the theory for a variable lower limit because the corresponding integration operator of order one, $I_-$, is adjoint to~$I_+$:
 \begin{multline*}
