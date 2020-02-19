@@ -214,6 +214,20 @@ We therefore set for any order~$\alpha$
 \end{equation*}
 Fractional integration on a finite or semi-infinite interval can also be defined by extending the integrand to the whole real line by zero.
 
-% FIXME FBm is a fractional integral, satisfies fractional Langevin equation
+\paragraph Returning to the construction of fractional Brownian motion, we can now define~\cite{\textit{Pipiras, Taqqu} 3.1}
+\begin{align*}
+  \dot X(t) &= C I_+^{H-1/2}\dot B(t),\\
+  X(t) &= C\int_0^t I_+^{H-1/2}\dot B(s) ds\\
+  &= C\int\theta(s)\theta(t-s)I_+^{H-1/2}\dot B(s) ds\\
+  &= C\int I_-^{H-1/2}[\theta(\cdot)\theta(t-\cdot)](s)\dot B(s) ds\\
+  &=\frac C{\Gamma(H+1/2)}\int[(t-s)^{H-1/2}\theta(t-s) - (-s)^{H-1/2}\theta(-s)]\dot B(s) ds\\
+  &=\frac C{\Gamma(H+1/2)}\left\{
+    \int_{-\infty}^0 [(t-s)^{H-1/2} - (-s)^{H-1/2}]\,dB(s) +
+    \int_0^t (t-s)^{H-1/2}\,dB(s)
+  \right\}
+\end{align*}
+and obtain in the last line the definition of fractional Brownian motion used with $C = 1$ by Mandelbrot and Van Ness~\cite{\textit{Mandelbrot, Van Ness}}.  The requirement $\langle X(1)^2\rangle = 2D$ with $\langle B(1)^2\rangle = 1$ fixes $C$ to a different value~\cite{\textit{Picard} B}.
+
+% FIXME FBm satisfies fractional Langevin equation
 
 \end{document}
