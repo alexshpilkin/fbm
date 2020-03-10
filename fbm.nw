@@ -146,7 +146,7 @@ This correspondence together with the characterization of fractional Brownian mo
 
 First of all, if fractional Brownian motion~$(X(t))$ with Hurst parameter $H$ is to exist, the covariance matrix
 \begin{equation*}
-  C_{ij} =\langle X(t_i)X(t_j)\rangle = D(t_i^{2H} + t_j^{2H} + \lvert t_i-t_j\rvert^{2H})
+  C_{ij} =\langle X(t_i)X(t_j)\rangle = D(t_i^{2H} + t_j^{2H} -\lvert t_i-t_j\rvert^{2H})
 \end{equation*}
 must be positive semidefinite for any sequence of times $(t_i)$.  However, for $H > 1$, setting $(t_i) = (1, 2)$ and $(a_i) = (-2, 1)$ gives $\sum a_i C_{ij} a_j = 2D(4 - 2^{2H}) < 0$, so fractional Brownian motion does not exist.  For $0 < H\leq 1$, one can in fact prove that $(C_{ij})$ is always positive definite and use a general theorem to establish the existence of fractional Brownian motion~\cite{\textit{Nourdin} 1.5}, but we will follow a more explicit approach.
 
