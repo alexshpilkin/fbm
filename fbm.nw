@@ -118,7 +118,7 @@ In the case of fractional Brownian motion, we have
   \langle X(at)X(as)\rangle
   &{}= D[(as)^{2H} + (at)^{2H} -\lvert a(t-s)\rvert^{2H}] \\
   &{}= a^{2H}D(s^{2H} + t^{2H} -\lvert t-s\rvert^{2H}) \\
-  &{}=\langle a^H X(t)\times a^H X(t)\rangle
+  &{}=\langle a^H X(t)\times a^H X(s)\rangle
 \end{split}
 \end{equation*}
 and $\langle X(at)\rangle =\langle a^H X(t)\rangle = 0$, so by Gaussianity $(X(at)) = (a^H X(t))$.  Fractional Brownian motion with Hurst parameter~$H$ is therefore $H$-self-similar, justifying the dual use of the term \textit{Hurst parameter}.  Moreover, for $H\neq 1$ it is the only $H$-self-similar Gaussian process with stationary increments, because $H$-self-similarity and stationary increments imply power-law anomalous diffusion $\langle X(t)^2\rangle = t^{2H}\langle X(1)^2\rangle\propto t^{2H}$ as well as zero means and starting at zero.
